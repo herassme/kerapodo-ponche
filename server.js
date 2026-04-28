@@ -1,49 +1,67 @@
 /**
- * KERAPODO — Sistema de Ponche v2.1
- * PINs persistentes en archivo JSON (sobreviven reinicios)
+ * KERAPODO — Sistema de Ponche v2.2
+ * Auto-carga PINs desde GitHub al arrancar si memoria está vacía
  */
  
 const express = require('express');
 const cors    = require('cors');
 const https   = require('https');
 const http    = require('http');
-const fs      = require('fs');
-const path    = require('path');
 const { XMLParser } = require('fast-xml-parser');
  
 const app = express();
 app.use(cors());
 app.use(express.json());
  
-const ODOO_URL  = process.env.ODOO_URL  || '';
-const ODOO_DB   = process.env.ODOO_DB   || 'prod';
-const ODOO_USER = process.env.ODOO_USER || '';
-const ODOO_PASS = process.env.ODOO_PASS || '';
-const ADMIN_KEY = process.env.ADMIN_KEY || 'admin-kerapodo-2026';
-const PORT      = process.env.PORT      || 3000;
-const PINS_FILE = path.join(__dirname, 'pines.json');
+const ODOO_URL   = process.env.ODOO_URL   || '';
+const ODOO_DB    = process.env.ODOO_DB    || 'prod';
+const ODOO_USER  = process.env.ODOO_USER  || '';
+const ODOO_PASS  = process.env.ODOO_PASS  || '';
+const ADMIN_KEY  = process.env.ADMIN_KEY  || 'admin-kerapodo-2026';
+const PORT       = process.env.PORT       || 3000;
+// URL raw del archivo JSON en GitHub (rama main)
+const PINES_URL  = process.env.PINES_URL  || 'https://raw.githubusercontent.com/herassme/kerapodo-ponche/main/pines.json';
  
-function cargarPines() {
+let empleadosPorPIN = {};
+ 
+// ── AUTO-CARGA DESDE GITHUB ───────────────────────────────────────────────────
+function fetchURL(url) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith('https') ? https : http;
+    lib.get(url, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+}
+ 
+async function cargarPinesDesdeGitHub() {
   try {
-    if (fs.existsSync(PINS_FILE)) return JSON.parse(fs.readFileSync(PINS_FILE, 'utf8'));
-  } catch(e) { console.error('Error cargando pines:', e.message); }
-  return {};
-}
-function guardarPines(p) {
-  try { fs.writeFileSync(PINS_FILE, JSON.stringify(p, null, 2), 'utf8'); }
-  catch(e) { console.error('Error guardando pines:', e.message); }
+    console.log('📥 Cargando PINs desde GitHub...');
+    const data = await fetchURL(PINES_URL);
+    const json = JSON.parse(data);
+    if (Array.isArray(json.empleados)) {
+      json.empleados.forEach(e => {
+        if (e.pin && e.odoo_id && e.nombre) {
+          empleadosPorPIN[e.pin] = { odoo_id: parseInt(e.odoo_id), nombre: e.nombre };
+        }
+      });
+      console.log(`✅ ${Object.keys(empleadosPorPIN).length} PINs cargados desde GitHub`);
+    }
+  } catch(e) {
+    console.error('❌ Error cargando PINs desde GitHub:', e.message);
+  }
 }
  
-let empleadosPorPIN = cargarPines();
-console.log(`📂 PINs en disco: ${Object.keys(empleadosPorPIN).length}`);
- 
+// ── XML-RPC ───────────────────────────────────────────────────────────────────
 function xmlrpcCall(endpoint, method, params) {
   return new Promise((resolve, reject) => {
     const body = `<?xml version="1.0"?><methodCall><methodName>${method}</methodName><params>${params.map(p=>`<param><value>${toXmlValue(p)}</value></param>`).join('')}</params></methodCall>`;
     const url = new URL(ODOO_URL + endpoint);
     const isHttps = url.protocol === 'https:';
     const lib = isHttps ? https : http;
-    const options = { hostname: url.hostname, port: url.port||(isHttps?443:80), path: url.pathname, method: 'POST', headers: { 'Content-Type':'text/xml','Content-Length':Buffer.byteLength(body) } };
+    const options = { hostname:url.hostname, port:url.port||(isHttps?443:80), path:url.pathname, method:'POST', headers:{'Content-Type':'text/xml','Content-Length':Buffer.byteLength(body)} };
     const req = lib.request(options, res => {
       let data = '';
       res.on('data', c => data += c);
@@ -87,7 +105,7 @@ async function odooLogin() {
     if (!uid||uid===false) throw new Error('Credenciales inválidas');
     odooUID=uid; odooAuthError=null;
     console.log(`✅ Odoo UID: ${uid}`); return uid;
-  } catch(e) { odooAuthError=e.message; console.error('❌ Odoo auth:',e.message); return null; }
+  } catch(e) { odooAuthError=e.message; console.error('❌ Odoo:',e.message); return null; }
 }
 async function odooExecute(model,method,args,kwargs={}) {
   if (!odooUID) await odooLogin();
@@ -101,14 +119,17 @@ function requireAdmin(req,res,next) {
 }
 function ahoraUTC() { return new Date().toISOString().replace('T',' ').substring(0,19); }
  
+// ── RUTAS ─────────────────────────────────────────────────────────────────────
 app.get('/', async (req,res) => {
   const uid = await odooLogin();
-  res.json({ sistema:'Kerapodo Ponche v2.1', estado:'activo', odoo_conexion:uid?'✅':'❌', odoo_error:odooAuthError||null, empleados_cargados:Object.keys(empleadosPorPIN).length, timestamp:new Date().toISOString() });
+  res.json({ sistema:'Kerapodo Ponche v2.2', estado:'activo', odoo_conexion:uid?'✅':'❌', odoo_error:odooAuthError||null, empleados_cargados:Object.keys(empleadosPorPIN).length, timestamp:new Date().toISOString() });
 });
  
 app.post('/ponche', async (req,res) => {
   const {pin,sucursal} = req.body;
   if (!pin||!sucursal) return res.status(400).json({ok:false,error:'Falta PIN o sucursal'});
+  // Si no hay PINs en memoria, recargar desde GitHub
+  if (Object.keys(empleadosPorPIN).length === 0) await cargarPinesDesdeGitHub();
   const e = empleadosPorPIN[pin];
   if (!e) return res.status(404).json({ok:false,error:'PIN incorrecto'});
   try {
@@ -124,11 +145,17 @@ app.post('/ponche', async (req,res) => {
     }
     console.log(`[PONCHE] ${e.nombre} → ${accion.toUpperCase()} | ${sucursal} | ${ahora}`);
     return res.json({ok:true,accion,nombre:e.nombre,sucursal,hora:ahora,attendance_id});
-  } catch(err) { console.error('[ERROR]',err.message); return res.status(500).json({ok:false,error:err.message}); }
+  } catch(err) { return res.status(500).json({ok:false,error:err.message}); }
 });
  
 app.get('/admin/empleados', requireAdmin, (req,res) => {
   res.json({total:Object.keys(empleadosPorPIN).length, empleados:Object.entries(empleadosPorPIN).map(([pin,e])=>({pin,odoo_id:e.odoo_id,nombre:e.nombre}))});
+});
+ 
+app.post('/admin/recargar', requireAdmin, async (req,res) => {
+  empleadosPorPIN = {};
+  await cargarPinesDesdeGitHub();
+  res.json({ok:true, cargados:Object.keys(empleadosPorPIN).length});
 });
  
 app.post('/admin/pin', requireAdmin, (req,res) => {
@@ -138,7 +165,6 @@ app.post('/admin/pin', requireAdmin, (req,res) => {
   if (ex&&ex.odoo_id!==odoo_id) return res.status(409).json({error:`PIN ${pin} ya asignado a ${ex.nombre}`});
   for (const [p,e] of Object.entries(empleadosPorPIN)) { if (e.odoo_id===odoo_id&&p!==pin) delete empleadosPorPIN[p]; }
   empleadosPorPIN[pin]={odoo_id:parseInt(odoo_id),nombre};
-  guardarPines(empleadosPorPIN);
   res.json({ok:true,mensaje:`PIN asignado a ${nombre}`});
 });
  
@@ -151,8 +177,6 @@ app.post('/admin/carga-masiva', requireAdmin, (req,res) => {
     empleadosPorPIN[e.pin]={odoo_id:parseInt(e.odoo_id),nombre:e.nombre};
     cargados++;
   });
-  guardarPines(empleadosPorPIN);
-  console.log(`[ADMIN] ${cargados} PINs guardados en disco`);
   res.json({ok:true,cargados,errores});
 });
  
@@ -161,7 +185,6 @@ app.delete('/admin/pin/:pin', requireAdmin, (req,res) => {
   if (!empleadosPorPIN[pin]) return res.status(404).json({error:'PIN no encontrado'});
   const nombre=empleadosPorPIN[pin].nombre;
   delete empleadosPorPIN[pin];
-  guardarPines(empleadosPorPIN);
   res.json({ok:true,mensaje:`PIN de ${nombre} eliminado`});
 });
  
@@ -181,12 +204,15 @@ app.get('/admin/asistencias-hoy', requireAdmin, async (req,res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
  
-odooLogin().then(()=>{
-  app.listen(PORT,()=>{
-    console.log(`\n🦶 Kerapodo Ponche v2.1 — Puerto ${PORT}`);
+// ── ARRANQUE ──────────────────────────────────────────────────────────────────
+async function arrancar() {
+  await odooLogin();
+  await cargarPinesDesdeGitHub();
+  app.listen(PORT, () => {
+    console.log(`\n🦶 Kerapodo Ponche v2.2 — Puerto ${PORT}`);
     console.log(`📡 Odoo: ${ODOO_URL}`);
     console.log(`👥 Empleados: ${Object.keys(empleadosPorPIN).length}`);
-    console.log(`💾 PINs en: ${PINS_FILE}\n`);
+    console.log(`🔗 PINs desde: ${PINES_URL}\n`);
   });
-});
- 
+}
+arrancar();
