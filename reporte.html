@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kerapodo — Reporte del Día</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#f5f0e8;--navy:#1a2744;--gold:#c9923a;--gold2:#e0a84a;
+  --white:#fff;--muted:#7a8099;--green:#2d9e6b;--green-bg:#e8f7f0;
+  --red:#d94f4f;--red-bg:#fdeaea;--orange:#e07820;--orange-bg:#fef0e0;
+  --font-head:'Playfair Display',serif;--font-body:'Plus Jakarta Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:var(--font-body);color:var(--navy);min-height:100vh;padding:24px 16px}
+.header{background:var(--navy);border-radius:20px;padding:24px;margin-bottom:24px;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,146,58,.12)}
+.brand{font-family:var(--font-head);font-size:26px;color:#fff;font-weight:700}
+.brand span{color:var(--gold2)}
+.header-sub{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:3px}
+.header-fecha{font-family:var(--font-head);font-size:18px;color:#fff;margin-top:12px}
+.header-horario{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.stat{background:var(--white);border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(26,39,68,.08)}
+.stat-num{font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--navy)}
+.stat-num.green{color:var(--green)}
+.stat-num.red{color:var(--red)}
+.stat-num.orange{color:var(--orange)}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+
+.seccion-titulo{font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-left:4px}
+
+.empleado-card{background:var(--white);border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(26,39,68,.06)}
+.emp-nombre{font-weight:600;font-size:14px;color:var(--navy)}
+.emp-fila{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap}
+.emp-dato{display:flex;flex-direction:column;align-items:center;gap:2px}
+.emp-dato-val{font-family:var(--font-head);font-size:16px;font-weight:600;color:var(--navy)}
+.emp-dato-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase}
+.badge.ok{background:var(--green-bg);color:var(--green)}
+.badge.alerta{background:var(--orange-bg);color:var(--orange)}
+.badge.descuento{background:var(--red-bg);color:var(--red)}
+.badge.banco{background:#e8eaff;color:#4a5cc9}
+
+.sin-datos{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
+
+.config-form{background:var(--white);border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(26,39,68,.08)}
+.config-form label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:6px}
+.config-form input{width:100%;border:1.5px solid #e0d8cc;border-radius:10px;padding:10px 12px;font-family:var(--font-body);font-size:14px;color:var(--navy);background:var(--bg);outline:none;margin-bottom:12px}
+.config-form input:focus{border-color:var(--gold)}
+.btn-cargar{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:13px;font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.btn-cargar:hover{background:#243258}
+.loading{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">Kera<span>podo</span></div>
+  <div class="header-sub">Reporte de Asistencia</div>
+  <div class="header-fecha" id="header-fecha">—</div>
+  <div class="header-horario" id="header-horario">—</div>
+</div>
+
+<div class="config-form" id="config-form">
+  <label>URL del servidor</label>
+  <input type="url" id="inp-url" placeholder="https://kerapodo-ponche.onrender.com"/>
+  <label>Contraseña admin</label>
+  <input type="password" id="inp-key" placeholder="••••••••"/>
+  <button class="btn-cargar" onclick="cargarReporte()">📊 Cargar Reporte</button>
+</div>
+
+<div id="contenido"></div>
+
+<script>
+// Cargar config guardada
+const urlGuardada = localStorage.getItem('kp_servidor') || '';
+const keyGuardada = localStorage.getItem('kp_adminKey') || '';
+if (urlGuardada) document.getElementById('inp-url').value = urlGuardada;
+if (keyGuardada) document.getElementById('inp-key').value = keyGuardada;
+
+const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+function hoy() {
+  const d = new Date();
+  return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+}
+document.getElementById('header-fecha').textContent = hoy();
+
+async function cargarReporte() {
+  const url = document.getElementById('inp-url').value.trim().replace(/\/$/,'');
+  const key = document.getElementById('inp-key').value.trim();
+  if (!url || !key) { alert('Completa la URL y la contraseña'); return; }
+
+  localStorage.setItem('kp_servidor', url);
+  localStorage.setItem('kp_adminKey', key);
+
+  document.getElementById('contenido').innerHTML = '<div class="loading">⏳ Cargando datos...</div>';
+
+  try {
+    const r = await fetch(`${url}/admin/reporte-hoy?adminKey=${encodeURIComponent(key)}`);
+    const d = await r.json();
+
+    if (d.error) { document.getElementById('contenido').innerHTML = `<div class="sin-datos">❌ Error: ${d.error}</div>`; return; }
+
+    // Horario
+    const h = d.horario;
+    document.getElementById('header-horario').textContent = `${h.entrada} — ${h.salida} · Almuerzo: ${h.almuerzo} min · Extra desde: ${h.extraDesde}`;
+
+    const empleados = d.empleados || [];
+    if (empleados.length === 0) {
+      document.getElementById('contenido').innerHTML = '<div class="sin-datos">No hay registros de asistencia hoy.</div>';
+      return;
+    }
+
+    // Estadísticas
+    const conDescuento = empleados.filter(e => (e.descuentoTarde + e.excesosAlmuerzo) > 0).length;
+    const conBanco     = empleados.filter(e => e.bancoExtra > 0).length;
+    const sinAlmuerzo  = empleados.filter(e => e.sin_almuerzo).length;
+
+    let html = `
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-num">${empleados.length}</div>
+          <div class="stat-label">Presentes</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num red">${conDescuento}</div>
+          <div class="stat-label">Con descuento</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num orange">${sinAlmuerzo}</div>
+          <div class="stat-label">Sin almuerzo</div>
+        </div>
+      </div>
+      <div class="seccion-titulo">Detalle por empleado</div>
+    `;
+
+    empleados.forEach(e => {
+      const descuento = e.descuentoTarde + e.excesosAlmuerzo;
+      const badges = [];
+      if (e.sin_almuerzo) badges.push(`<span class="badge alerta">⚠️ Sin almuerzo</span>`);
+      if (e.descuentoTarde > 0) badges.push(`<span class="badge descuento">⏰ Tarde: ${e.descuentoTarde} min</span>`);
+      if (e.excesosAlmuerzo > 0) badges.push(`<span class="badge descuento">🍽️ Exceso: ${e.excesosAlmuerzo} min</span>`);
+      if (e.bancoExtra > 0) badges.push(`<span class="badge banco">⭐ Extra: +${e.bancoExtra} min</span>`);
+      if (!e.sin_almuerzo && descuento === 0 && e.bancoExtra === 0) badges.push(`<span class="badge ok">✅ Sin novedad</span>`);
+
+      html += `
+        <div class="empleado-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div class="emp-nombre">${e.nombre}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${badges.join('')}</div>
+          <div class="emp-fila">
+            <div class="emp-dato">
+              <div class="emp-dato-val">${minutosAHora(e.minutosTrabajados)}</div>
+              <div class="emp-dato-lbl">Trabajadas</div>
+            </div>
+            <div class="emp-dato">
+              <div class="emp-dato-val" style="color:${descuento>0?'var(--red)':'var(--navy)'}">${descuento > 0 ? '-'+descuento+' min' : '—'}</div>
+              <div class="emp-dato-lbl">Descuento</div>
+            </div>
+            <div class="emp-dato">
+              <div class="emp-dato-val" style="color:${e.bancoExtra>0?'#4a5cc9':'var(--navy)'}">${e.bancoExtra > 0 ? '+'+e.bancoExtra+' min' : '—'}</div>
+              <div class="emp-dato-lbl">Banco</div>
+            </div>
+            <div class="emp-dato">
+              <div class="emp-dato-val" style="color:var(--green)">${e.horas_efectivas_fmt}</div>
+              <div class="emp-dato-lbl">Efectivas</div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('contenido').innerHTML = html;
+    document.getElementById('config-form').style.display = 'none';
+
+  } catch(e) {
+    document.getElementById('contenido').innerHTML = `<div class="sin-datos">❌ No se pudo conectar al servidor</div>`;
+  }
+}
+
+function minutosAHora(min) {
+  if (!min) return '0:00';
+  const h = Math.floor(min/60);
+  const m = min % 60;
+  return `${h}:${String(m).padStart(2,'0')}`;
+}
+
+// Auto-cargar si hay config guardada
+if (urlGuardada && keyGuardada) cargarReporte();
+</script>
+</body>
+</html>
