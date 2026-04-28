@@ -609,6 +609,9 @@ function abrirAdmin(){
   adminAutenticado=false;
   document.getElementById('admin-login-pass').value='';
   document.getElementById('admin-login-err').textContent='';
+  // Pre-llenar URL si ya está guardada
+  const urlInput=document.getElementById('admin-login-url');
+  if(urlInput) urlInput.value=CONFIG.servidor||'';
   document.getElementById('admin-login-wrap').style.display='flex';
   document.getElementById('admin-panel-wrap').style.display='none';
   document.getElementById('admin-overlay').classList.add('show');
@@ -620,11 +623,43 @@ function cerrarAdmin(){
   adminAutenticado=false;
 }
 
-function adminLogin(){
+async function adminLogin(){
   const pass=document.getElementById('admin-login-pass').value.trim();
   const err=document.getElementById('admin-login-err');
-  if(pass===CONFIG.adminKey){
+  if(!pass){err.textContent='Ingresa la contraseña';return;}
+
+  // Primero intentar con el servidor (funciona en cualquier dispositivo)
+  const servidorURL = CONFIG.servidor || document.getElementById('cfg-url')?.value?.trim() || '';
+  
+  if(servidorURL){
+    try{
+      err.textContent='Verificando...';
+      const r = await fetch(`${servidorURL}/admin/verificar`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:pass})
+      });
+      const d = await r.json();
+      if(d.ok){
+        // Guardar config en localStorage automáticamente
+        CONFIG.adminKey = pass;
+        CONFIG.servidor = servidorURL;
+        localStorage.setItem('kp_adminKey', pass);
+        localStorage.setItem('kp_servidor', servidorURL);
+        adminAutenticado=true;
+        err.textContent='';
+        document.getElementById('admin-login-wrap').style.display='none';
+        document.getElementById('admin-panel-wrap').style.display='flex';
+        adminTab('reporte');
+        return;
+      }
+    }catch(e){/* sin servidor, continuar con localStorage */}
+  }
+
+  // Fallback: verificar contra localStorage
+  if(pass===CONFIG.adminKey && CONFIG.adminKey){
     adminAutenticado=true;
+    err.textContent='';
     document.getElementById('admin-login-wrap').style.display='none';
     document.getElementById('admin-panel-wrap').style.display='flex';
     adminTab('reporte');
