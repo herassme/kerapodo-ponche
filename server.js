@@ -263,6 +263,16 @@ app.get('/', async (req,res) => {
 
 // Servir kiosko HTML
 app.get('/kiosko', (req,res) => res.sendFile(__dirname + '/kiosko.html'));
+
+// Verificar contraseña admin (para dispositivos sin config en localStorage)
+app.post('/admin/verificar', (req,res) => {
+  const {key} = req.body;
+  if(key === ADMIN_KEY) {
+    res.json({ok:true, adminKey: ADMIN_KEY, servidor: ODOO_URL});
+  } else {
+    res.status(401).json({ok:false, error:'Contraseña incorrecta'});
+  }
+});
 app.get('/reporte', (req,res) => res.sendFile(__dirname + '/reporte.html'));
 app.get('/admin-panel', (req,res) => res.sendFile(__dirname + '/admin-panel.html'));
 
