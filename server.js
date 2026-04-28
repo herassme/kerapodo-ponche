@@ -31,7 +31,7 @@ const HORARIOS = {
 };
 
 function getHorarioHoy() {
-  const dia = new Date().getDay();
+  const dia = diaRD !== undefined ? diaRD() : new Date().getDay();
   return HORARIOS.finde.dias.includes(dia) ? HORARIOS.finde : HORARIOS.semana;
 }
 
@@ -58,8 +58,17 @@ function ahoraUTC() {
 }
 
 function ahoraRD() {
+  // RD = UTC-4
   const d = new Date();
+  d.setHours(d.getHours() - 4);
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function diaRD() {
+  // Dia de la semana en RD (0=Dom ... 6=Sab)
+  const d = new Date();
+  d.setHours(d.getHours() - 4);
+  return d.getDay();
 }
 
 // ── AUTO-CARGA PINES ──────────────────────────────────────────────────────────
