@@ -423,14 +423,18 @@ app.get('/admin/reporte-hoy', requireAdmin, async (req,res) => {
 
     const registros = await odooExecute('hr.attendance','search_read',
       [[['check_in','>=',inicioStr]]],
-      {fields:['employee_id','check_in','check_out','reason'],order:'employee_id asc,check_in asc'}
+      {fields:['employee_id','check_in','check_out'],order:'employee_id asc,check_in asc'}
     );
+
+    // Proteger contra null o array vacío
+    const regs = Array.isArray(registros) ? registros : [];
 
     // Agrupar por empleado
     const porEmpleado = {};
-    registros.forEach(r => {
-      const id = r.employee_id[0];
-      const nombre = r.employee_id[1];
+    regs.forEach(r => {
+      if (!r.employee_id) return;
+      const id = Array.isArray(r.employee_id) ? r.employee_id[0] : r.employee_id;
+      const nombre = Array.isArray(r.employee_id) ? r.employee_id[1] : 'Desconocido';
       if (!porEmpleado[id]) porEmpleado[id] = { nombre, registros: [] };
       porEmpleado[id].registros.push(r);
     });
@@ -438,7 +442,7 @@ app.get('/admin/reporte-hoy', requireAdmin, async (req,res) => {
     // Calcular para cada empleado
     const resumen = Object.values(porEmpleado).map(emp => {
       const calc = calcularTiempo(emp.registros, horario);
-      const tieneAlmuerzo = emp.registros.some(r => r.reason === 'salida_almuerzo');
+      const tieneAlmuerzo = emp.registros.length > 1;
       return {
         nombre: emp.nombre,
         ...calc,
