@@ -86,13 +86,6 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 /* PIN admin para registro */
 .reg-pin-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:280px}
 .reg-pin-label{font-size:12px;color:rgba(255,255,255,.6);letter-spacing:.05em}
-.reg-pin-dots{display:flex;gap:10px}
-.reg-pin-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.3);transition:all .2s}
-.reg-pin-dot.filled{background:var(--gold);border-color:var(--gold);transform:scale(1.2)}
-.reg-teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:280px}
-.reg-tecla{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:var(--white);font-family:var(--font-body);font-size:18px;font-weight:600;aspect-ratio:1.3;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s}
-.reg-tecla:active{background:rgba(201,146,58,.3);border-color:var(--gold)}
-.reg-tecla.del{font-size:14px;color:rgba(255,255,255,.5)}
 
 .reg-btn{background:var(--gold);color:#000;border:none;font-family:var(--font-body);font-size:13px;font-weight:700;padding:14px 32px;border-radius:var(--radius-sm);cursor:pointer}
 .reg-btn:disabled{background:rgba(255,255,255,.1);color:rgba(255,255,255,.3);cursor:not-allowed}
@@ -195,20 +188,14 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   <div id="reg-paso-pin">
     <div class="reg-titulo">Rostro no registrado</div>
     <div class="reg-sub" style="margin-bottom:8px">El empleado <span id="reg-emp-nombre" style="color:var(--gold2);font-weight:600"></span> no tiene rostro registrado.</div>
-    <div class="reg-sub">Admin: ingresa tu PIN para registrarlo ahora.</div>
+    <div class="reg-sub">Admin: ingresa tu contraseña para registrarlo ahora.</div>
     <div class="reg-pin-wrap" style="margin-top:16px">
-      <div class="reg-pin-label">PIN del administrador</div>
-      <div class="reg-pin-dots" id="reg-pin-dots">
-        <div class="reg-pin-dot"></div><div class="reg-pin-dot"></div>
-        <div class="reg-pin-dot"></div><div class="reg-pin-dot"></div>
-      </div>
-      <div class="reg-teclado" id="reg-teclado">
-        <div class="reg-tecla" data-n="1">1</div><div class="reg-tecla" data-n="2">2</div><div class="reg-tecla" data-n="3">3</div>
-        <div class="reg-tecla" data-n="4">4</div><div class="reg-tecla" data-n="5">5</div><div class="reg-tecla" data-n="6">6</div>
-        <div class="reg-tecla" data-n="7">7</div><div class="reg-tecla" data-n="8">8</div><div class="reg-tecla" data-n="9">9</div>
-        <div class="reg-tecla del" data-n="del">⌫</div><div class="reg-tecla" data-n="0">0</div>
-        <div class="reg-tecla" data-n="skip" style="font-size:10px;letter-spacing:.05em">Omitir</div>
-      </div>
+      <div class="reg-pin-label">Contraseña del administrador</div>
+      <input type="password" id="reg-admin-pass" placeholder="••••••••" 
+        style="background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:#fff;font-family:var(--font-body);font-size:16px;padding:12px 16px;border-radius:12px;outline:none;width:100%;max-width:280px;text-align:center"
+        onkeydown="if(event.key==='Enter')verificarAdminPin()"/>
+      <button onclick="verificarAdminPin()" style="background:var(--gold);color:#000;border:none;font-family:var(--font-body);font-size:13px;font-weight:700;padding:12px 28px;border-radius:12px;cursor:pointer;width:100%;max-width:280px">Verificar</button>
+      <button onclick="omitirRegistro()" style="background:transparent;color:rgba(255,255,255,.3);border:none;font-family:var(--font-body);font-size:12px;cursor:pointer;text-decoration:underline;margin-top:4px">Omitir y continuar</button>
       <div class="reg-msg err" id="reg-pin-msg"></div>
     </div>
   </div>
@@ -468,14 +455,11 @@ function detenerStream(){if(streamActivo){streamActivo.getTracks().forEach(t=>t.
 let regStream=null;
 let regPinEmpActual=null;
 let regResolve=null;
-let adminPinBuffer='';
 
 async function flujoRegistroFacial(pinEmp,nombre){
   return new Promise((resolve)=>{
     regPinEmpActual=pinEmp;
     regResolve=resolve;
-    adminPinBuffer='';
-    actualizarRegPinDots();
 
     document.getElementById('reg-emp-nombre').textContent=nombre;
     document.getElementById('reg-pin-msg').textContent='';
@@ -488,28 +472,15 @@ async function flujoRegistroFacial(pinEmp,nombre){
   });
 }
 
-function actualizarRegPinDots(){
-  document.querySelectorAll('.reg-pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<adminPinBuffer.length));
+function omitirRegistro(){
+  cerrarRegistro();
+  if(regResolve){regResolve(false);regResolve=null;}
 }
 
-document.getElementById('reg-teclado').addEventListener('click',e=>{
-  const t=e.target.closest('.reg-tecla');
-  if(!t)return;
-  const n=t.dataset.n;
-  if(n==='skip'){
-    // Omitir registro — continuar ponche sin cara
-    cerrarRegistro();
-    if(regResolve){regResolve(false);regResolve=null;}
-    return;
-  }
-  if(n==='del'){adminPinBuffer=adminPinBuffer.slice(0,-1);}
-  else{if(adminPinBuffer.length>=4)return;adminPinBuffer+=n;}
-  actualizarRegPinDots();
-  if(adminPinBuffer.length===4) verificarAdminPin();
-});
-
 async function verificarAdminPin(){
-  if(adminPinBuffer===CONFIG.adminKey||adminPinBuffer===CONFIG.adminKey.replace('@','')) {
+  const passInput=document.getElementById('reg-admin-pass');
+  const pass=passInput?passInput.value.trim():'';
+  if(pass===CONFIG.adminKey){
     // PIN correcto — mostrar cámara
     document.getElementById('reg-paso-pin').style.display='none';
     document.getElementById('reg-paso-camara').style.display='flex';
@@ -530,9 +501,11 @@ async function verificarAdminPin(){
       document.getElementById('reg-msg').className='reg-msg err';
     }
   } else {
-    document.getElementById('reg-pin-msg').textContent='PIN incorrecto, intenta de nuevo';
-    adminPinBuffer='';
-    actualizarRegPinDots();
+    document.getElementById('reg-pin-msg').textContent='Contraseña incorrecta, intenta de nuevo';
+    if(document.getElementById('reg-admin-pass')){
+      document.getElementById('reg-admin-pass').value='';
+      document.getElementById('reg-admin-pass').focus();
+    }
     setTimeout(()=>document.getElementById('reg-pin-msg').textContent='',2000);
   }
 }
@@ -562,7 +535,7 @@ function cerrarRegistro(){
   if(regStream){regStream.getTracks().forEach(t=>t.stop());regStream=null;}
   document.getElementById('reg-overlay').classList.remove('show');
   document.getElementById('reg-btn').disabled=true;
-  adminPinBuffer='';
+  if(document.getElementById('reg-admin-pass')) document.getElementById('reg-admin-pass').value='';
 }
 
 // ── ENVIAR PONCHE ─────────────────────────────────────────────────────────────
