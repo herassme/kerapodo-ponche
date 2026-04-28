@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kerapodo — Panel Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#f5f0e8;--bg2:#ede7d9;--navy:#1a2744;--navy2:#243258;
+  --gold:#c9923a;--gold2:#e0a84a;--gold-pale:#f5e6cc;
+  --white:#fff;--muted:#7a8099;--border:#e0d8cc;
+  --green:#2d9e6b;--green-bg:#e8f7f0;
+  --red:#d94f4f;--red-bg:#fdeaea;
+  --font-head:'Playfair Display',serif;--font-body:'Plus Jakarta Sans',sans-serif;
+  --radius:14px;--shadow:0 4px 16px rgba(26,39,68,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:var(--font-body);color:var(--navy);min-height:100vh}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{background:var(--white);border-radius:24px;padding:40px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(26,39,68,.15);text-align:center}
+.login-logo{font-family:var(--font-head);font-size:32px;color:var(--navy);margin-bottom:4px}
+.login-logo span{color:var(--gold2)}
+.login-sub{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:32px}
+.login-field{text-align:left;margin-bottom:16px}
+.login-field label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;display:block;margin-bottom:6px}
+.login-field input{width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-family:var(--font-body);font-size:14px;color:var(--navy);background:var(--bg);outline:none}
+.login-field input:focus{border-color:var(--gold)}
+.btn-primary{width:100%;background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:14px;font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-top:8px}
+.btn-primary:hover{background:var(--navy2)}
+.login-error{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+
+/* LAYOUT */
+#main-screen{display:none;min-height:100vh}
+.topbar{background:var(--navy);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-brand{font-family:var(--font-head);font-size:22px;color:#fff}
+.topbar-brand span{color:var(--gold2)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:7px 14px;font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.08em;cursor:pointer;text-transform:uppercase}
+.topbar-btn:hover{background:rgba(255,255,255,.2)}
+.topbar-btn.gold{background:var(--gold);border-color:var(--gold);color:#000}
+
+.content{padding:24px 16px;max-width:800px;margin:0 auto}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:var(--bg2);border-radius:12px;padding:4px;margin-bottom:24px}
+.tab{flex:1;padding:10px;text-align:center;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border-radius:9px;cursor:pointer;color:var(--muted);transition:all .2s}
+.tab.active{background:var(--white);color:var(--navy);box-shadow:var(--shadow)}
+
+/* CARDS */
+.section-card{background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.section-title{font-family:var(--font-head);font-size:18px;color:var(--navy);margin-bottom:16px}
+
+/* TABLA EMPLEADOS */
+.search-bar{display:flex;gap:8px;margin-bottom:16px}
+.search-bar input{flex:1;border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-family:var(--font-body);font-size:13px;color:var(--navy);background:var(--bg);outline:none}
+.search-bar input:focus{border-color:var(--gold)}
+
+.emp-lista{display:flex;flex-direction:column;gap:8px}
+.emp-item{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:12px;transition:border-color .2s}
+.emp-item:hover{border-color:var(--gold)}
+.emp-avatar{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:14px;font-weight:600;flex-shrink:0}
+.emp-info{flex:1;min-width:0}
+.emp-nombre{font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emp-detalle{font-size:11px;color:var(--muted);margin-top:2px}
+.emp-pin{background:var(--navy);color:var(--gold2);font-family:var(--font-head);font-size:14px;font-weight:600;padding:4px 12px;border-radius:8px;letter-spacing:.1em;flex-shrink:0}
+.emp-pin.sin-pin{background:var(--red-bg);color:var(--red);font-size:10px;font-weight:600;letter-spacing:.05em}
+.emp-acciones{display:flex;gap:6px;flex-shrink:0}
+.btn-sm{border:none;border-radius:8px;padding:6px 10px;font-family:var(--font-body);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-edit{background:var(--gold-pale);color:var(--gold)}
+.btn-edit:hover{background:var(--gold);color:#000}
+.btn-del{background:var(--red-bg);color:var(--red)}
+.btn-del:hover{background:var(--red);color:#fff}
+
+/* FORMULARIO */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-field.full{grid-column:span 2}
+.form-field label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
+.form-field input,.form-field select{border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-family:var(--font-body);font-size:13px;color:var(--navy);background:var(--bg);outline:none}
+.form-field input:focus,.form-field select:focus{border-color:var(--gold)}
+.form-btns{display:flex;gap:8px;margin-top:16px}
+.btn-guardar{flex:1;background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:12px;font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.btn-guardar:hover{background:var(--navy2)}
+.btn-cancelar{background:var(--bg2);color:var(--muted);border:none;border-radius:var(--radius);padding:12px 20px;font-family:var(--font-body);font-size:12px;font-weight:600;cursor:pointer}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:40px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.toast.ok{background:var(--green)}
+.toast.err{background:var(--red)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,39,68,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:24px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:20px;padding:28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(26,39,68,.2)}
+.modal-title{font-family:var(--font-head);font-size:20px;color:var(--navy);margin-bottom:16px}
+.modal-btns{display:flex;gap:8px;margin-top:20px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.stat-card{background:var(--white);border-radius:var(--radius);padding:16px;text-align:center;box-shadow:var(--shadow)}
+.stat-num{font-family:var(--font-head);font-size:32px;font-weight:700;color:var(--navy)}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+
+.loading-msg{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+.badge-activo{background:var(--green-bg);color:var(--green);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.05em}
+.badge-inactivo{background:var(--red-bg);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.05em}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">Kera<span>podo</span></div>
+    <div class="login-sub">Panel de Administración</div>
+    <div class="login-field">
+      <label>URL del servidor</label>
+      <input type="url" id="login-url" placeholder="https://kerapodo-ponche.onrender.com"/>
+    </div>
+    <div class="login-field">
+      <label>Contraseña admin</label>
+      <input type="password" id="login-key" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"/>
+    </div>
+    <button class="btn-primary" onclick="login()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-screen">
+  <div class="topbar">
+    <div class="topbar-brand">Kera<span>podo</span> Admin</div>
+    <div class="topbar-right">
+      <button class="topbar-btn gold" onclick="mostrarTab('agregar')">+ Nuevo Empleado</button>
+      <button class="topbar-btn" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="tabs">
+      <div class="tab active" onclick="mostrarTab('empleados')" id="tab-empleados">👥 Empleados</div>
+      <div class="tab" onclick="mostrarTab('agregar')" id="tab-agregar">➕ Agregar</div>
+      <div class="tab" onclick="mostrarTab('odoo')" id="tab-odoo">🔗 Importar Odoo</div>
+    </div>
+
+    <!-- TAB EMPLEADOS -->
+    <div id="panel-empleados">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-con-pin" style="color:var(--green)">—</div><div class="stat-label">Con PIN</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-sin-pin" style="color:var(--red)">—</div><div class="stat-label">Sin PIN</div></div>
+      </div>
+      <div class="section-card">
+        <div class="search-bar">
+          <input type="text" id="buscar-emp" placeholder="🔍 Buscar empleado..." oninput="filtrarEmpleados()"/>
+        </div>
+        <div class="emp-lista" id="emp-lista">
+          <div class="loading-msg">⏳ Cargando empleados...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB AGREGAR / EDITAR -->
+    <div id="panel-agregar" style="display:none">
+      <div class="section-card">
+        <div class="section-title" id="form-titulo">Agregar Empleado</div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Nombre completo</label>
+            <input type="text" id="f-nombre" placeholder="Ej: MARIA GARCIA"/>
+          </div>
+          <div class="form-field">
+            <label>Odoo ID</label>
+            <input type="number" id="f-odoo-id" placeholder="Ej: 145"/>
+          </div>
+          <div class="form-field">
+            <label>PIN (4-6 dígitos)</label>
+            <input type="text" id="f-pin" placeholder="Ej: 1079" maxlength="6"/>
+          </div>
+        </div>
+        <div class="form-btns">
+          <button class="btn-cancelar" onclick="mostrarTab('empleados')">Cancelar</button>
+          <button class="btn-guardar" onclick="guardarEmpleado()">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB IMPORTAR ODOO -->
+    <div id="panel-odoo" style="display:none">
+      <div class="section-card">
+        <div class="section-title">Empleados en Odoo</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+          Lista de empleados activos en Odoo. Haz clic en "Asignar PIN" para agregar al sistema de ponche.
+        </p>
+        <div class="emp-lista" id="odoo-lista">
+          <div class="loading-msg">⏳ Cargando desde Odoo...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PIN -->
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal">
+    <div class="modal-title">Editar PIN</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px" id="modal-emp-nombre">—</div>
+    <div class="form-field">
+      <label>Nuevo PIN (4-6 dígitos)</label>
+      <input type="text" id="modal-pin" placeholder="Ej: 1079" maxlength="6"/>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-guardar" onclick="guardarPinEditado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR ELIMINAR -->
+<div class="modal-overlay" id="modal-eliminar">
+  <div class="modal">
+    <div class="modal-title">⚠️ Eliminar empleado</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px" id="modal-del-nombre">—</div>
+    <p style="font-size:13px;color:var(--navy)">¿Seguro que quieres eliminar este empleado del sistema de ponche? Su historial en Odoo no se verá afectado.</p>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="cerrarModalDel()">Cancelar</button>
+      <button class="btn-guardar" style="background:var(--red)" onclick="confirmarEliminar()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+let servidor='', adminKey='', empleados=[], odooEmpleados=[];
+let editandoPin=null, eliminandoPin=null;
+
+// ── LOGIN ────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  const url = localStorage.getItem('kp_servidor')||'';
+  const key = localStorage.getItem('kp_adminKey')||'';
+  if(url) document.getElementById('login-url').value=url;
+  if(key) document.getElementById('login-key').value=key;
+  if(url&&key){ servidor=url; adminKey=key; entrar(); }
+};
+
+async function login(){
+  const url=document.getElementById('login-url').value.trim().replace(/\/$/,'');
+  const key=document.getElementById('login-key').value.trim();
+  const err=document.getElementById('login-error');
+  if(!url||!key){err.textContent='Completa los campos';return;}
+  err.textContent='Verificando...';
+  try{
+    const r=await fetch(`${url}/admin/empleados`,{headers:{'x-admin-key':key}});
+    if(r.status===401){err.textContent='Contraseña incorrecta';return;}
+    servidor=url; adminKey=key;
+    localStorage.setItem('kp_servidor',url);
+    localStorage.setItem('kp_adminKey',key);
+    err.textContent='';
+    entrar();
+  }catch(e){err.textContent='No se pudo conectar al servidor';}
+}
+
+function entrar(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-screen').style.display='block';
+  cargarEmpleados();
+}
+
+function cerrarSesion(){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('main-screen').style.display='none';
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function mostrarTab(tab){
+  ['empleados','agregar','odoo'].forEach(t=>{
+    document.getElementById(`panel-${t}`).style.display=t===tab?'block':'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active',t===tab);
+  });
+  if(tab==='odoo'&&odooEmpleados.length===0) cargarOdooEmpleados();
+  if(tab==='agregar'){
+    document.getElementById('form-titulo').textContent='Agregar Empleado';
+    document.getElementById('f-nombre').value='';
+    document.getElementById('f-odoo-id').value='';
+    document.getElementById('f-pin').value='';
+  }
+}
+
+// ── EMPLEADOS ─────────────────────────────────────────────────────────────────
+async function cargarEmpleados(){
+  try{
+    const r=await fetch(`${servidor}/admin/empleados`,{headers:{'x-admin-key':adminKey}});
+    const d=await r.json();
+    empleados=d.empleados||[];
+    renderEmpleados(empleados);
+    document.getElementById('stat-total').textContent=empleados.length;
+    document.getElementById('stat-con-pin').textContent=empleados.length;
+    document.getElementById('stat-sin-pin').textContent=0;
+  }catch(e){
+    document.getElementById('emp-lista').innerHTML='<div class="loading-msg">❌ Error cargando empleados</div>';
+  }
+}
+
+function renderEmpleados(lista){
+  const el=document.getElementById('emp-lista');
+  if(!lista.length){el.innerHTML='<div class="loading-msg">No hay empleados</div>';return;}
+  el.innerHTML=lista.map(e=>`
+    <div class="emp-item">
+      <div class="emp-avatar">${e.nombre.charAt(0)}</div>
+      <div class="emp-info">
+        <div class="emp-nombre">${e.nombre}</div>
+        <div class="emp-detalle">Odoo ID: ${e.odoo_id}</div>
+      </div>
+      <div class="emp-pin">${e.pin}</div>
+      <div class="emp-acciones">
+        <button class="btn-sm btn-edit" onclick="abrirEditar('${e.pin}','${e.nombre.replace(/'/g,"\\'")}')">✏️</button>
+        <button class="btn-sm btn-del" onclick="abrirEliminar('${e.pin}','${e.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filtrarEmpleados(){
+  const q=document.getElementById('buscar-emp').value.toLowerCase();
+  const filtrados=empleados.filter(e=>e.nombre.toLowerCase().includes(q)||e.pin.includes(q));
+  renderEmpleados(filtrados);
+}
+
+// ── AGREGAR / EDITAR ──────────────────────────────────────────────────────────
+async function guardarEmpleado(){
+  const nombre=document.getElementById('f-nombre').value.trim().toUpperCase();
+  const odoo_id=document.getElementById('f-odoo-id').value.trim();
+  const pin=document.getElementById('f-pin').value.trim();
+  if(!nombre||!odoo_id||!pin){toast('Completa todos los campos','err');return;}
+  if(pin.length<4||pin.length>6||isNaN(pin)){toast('PIN debe ser 4-6 dígitos','err');return;}
+  try{
+    const r=await fetch(`${servidor}/admin/pin`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({odoo_id:parseInt(odoo_id),nombre,pin})
+    });
+    const d=await r.json();
+    if(d.ok){
+      toast('✅ Empleado guardado','ok');
+      await cargarEmpleados();
+      mostrarTab('empleados');
+    }else{toast(d.error||'Error al guardar','err');}
+  }catch(e){toast('Error de conexión','err');}
+}
+
+// ── EDITAR PIN ────────────────────────────────────────────────────────────────
+function abrirEditar(pin, nombre){
+  editandoPin={pin,nombre};
+  document.getElementById('modal-emp-nombre').textContent=nombre;
+  document.getElementById('modal-pin').value=pin;
+  document.getElementById('modal-editar').classList.add('show');
+  setTimeout(()=>document.getElementById('modal-pin').focus(),200);
+}
+function cerrarModal(){document.getElementById('modal-editar').classList.remove('show');editandoPin=null;}
+
+async function guardarPinEditado(){
+  const nuevoPIN=document.getElementById('modal-pin').value.trim();
+  if(!nuevoPIN||nuevoPIN.length<4||isNaN(nuevoPIN)){toast('PIN inválido','err');return;}
+  const emp=empleados.find(e=>e.pin===editandoPin.pin);
+  if(!emp)return;
+  try{
+    const r=await fetch(`${servidor}/admin/pin`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({odoo_id:emp.odoo_id,nombre:emp.nombre,pin:nuevoPIN})
+    });
+    const d=await r.json();
+    if(d.ok){
+      // Si cambió el PIN, eliminar el anterior
+      if(nuevoPIN!==editandoPin.pin){
+        await fetch(`${servidor}/admin/pin/${editandoPin.pin}`,{method:'DELETE',headers:{'x-admin-key':adminKey}});
+      }
+      toast('✅ PIN actualizado','ok');
+      cerrarModal();
+      await cargarEmpleados();
+    }else{toast(d.error||'Error','err');}
+  }catch(e){toast('Error de conexión','err');}
+}
+
+// ── ELIMINAR ─────────────────────────────────────────────────────────────────
+function abrirEliminar(pin,nombre){
+  eliminandoPin={pin,nombre};
+  document.getElementById('modal-del-nombre').textContent=nombre;
+  document.getElementById('modal-eliminar').classList.add('show');
+}
+function cerrarModalDel(){document.getElementById('modal-eliminar').classList.remove('show');eliminandoPin=null;}
+
+async function confirmarEliminar(){
+  try{
+    const r=await fetch(`${servidor}/admin/pin/${eliminandoPin.pin}`,{method:'DELETE',headers:{'x-admin-key':adminKey}});
+    const d=await r.json();
+    if(d.ok){toast('✅ Empleado eliminado','ok');cerrarModalDel();await cargarEmpleados();}
+    else{toast(d.error||'Error','err');}
+  }catch(e){toast('Error de conexión','err');}
+}
+
+// ── IMPORTAR DESDE ODOO ───────────────────────────────────────────────────────
+async function cargarOdooEmpleados(){
+  document.getElementById('odoo-lista').innerHTML='<div class="loading-msg">⏳ Cargando desde Odoo...</div>';
+  try{
+    const r=await fetch(`${servidor}/admin/odoo-empleados`,{headers:{'x-admin-key':adminKey}});
+    const d=await r.json();
+    odooEmpleados=d.empleados||[];
+    renderOdooEmpleados();
+  }catch(e){
+    document.getElementById('odoo-lista').innerHTML='<div class="loading-msg">❌ Error cargando desde Odoo</div>';
+  }
+}
+
+function renderOdooEmpleados(){
+  const el=document.getElementById('odoo-lista');
+  if(!odooEmpleados.length){el.innerHTML='<div class="loading-msg">No hay empleados en Odoo</div>';return;}
+  el.innerHTML=odooEmpleados.map(e=>{
+    const tienePin=empleados.find(ep=>ep.odoo_id===e.id);
+    return `
+      <div class="emp-item">
+        <div class="emp-avatar">${e.name.charAt(0)}</div>
+        <div class="emp-info">
+          <div class="emp-nombre">${e.name}</div>
+          <div class="emp-detalle">ID: ${e.id} · ${e.job_id?e.job_id[1]:'Sin cargo'}</div>
+        </div>
+        ${tienePin
+          ? `<span class="badge-activo">PIN: ${tienePin.pin}</span>`
+          : `<button class="btn-sm btn-edit" onclick="asignarPinOdoo(${e.id},'${e.name.replace(/'/g,"\\'")}')">+ Asignar PIN</button>`
+        }
+      </div>
+    `;
+  }).join('');
+}
+
+function asignarPinOdoo(odooId, nombre){
+  mostrarTab('agregar');
+  document.getElementById('form-titulo').textContent='Asignar PIN a empleado de Odoo';
+  document.getElementById('f-nombre').value=nombre;
+  document.getElementById('f-odoo-id').value=odooId;
+  document.getElementById('f-pin').focus();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastTimer=null;
+function toast(msg,tipo=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className=`toast show ${tipo}`;
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
