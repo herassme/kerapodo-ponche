@@ -742,18 +742,20 @@ async function renderTabEmpleados(filtro=''){
   let html=`
     <div class="section-title">Empleados (${empleadosAdmin.length})</div>
     <input class="search-input" placeholder="🔍 Buscar..." oninput="renderTabEmpleados(this.value)" value="${filtro}"/>
-    <button class="btn-gold" style="margin-bottom:12px" onclick="mostrarFormAgregar()">+ Agregar empleado</button>
+    <button class="btn-gold" style="margin-bottom:8px" onclick="sincronizarOdoo()">🔄 Sincronizar con Odoo</button>
     <div id="emp-lista-admin">`;
   lista.forEach(e=>{
+    const tieneRostro = descriptoresFaciales[e.pin] !== undefined;
     html+=`<div class="emp-card">
       <div class="emp-av">${e.nombre.charAt(0)}</div>
       <div class="emp-info">
         <div class="emp-nom">${e.nombre}</div>
-        <div class="emp-det">Odoo ID: ${e.odoo_id}</div>
+        <div class="emp-det">ID: ${e.odoo_id} · ${tieneRostro?'📸 Con rostro':'Sin rostro'}</div>
       </div>
       <div class="emp-pin-badge">${e.pin}</div>
       <div class="emp-btns">
-        <button class="btn-xs edit" onclick="abrirEditarPin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}',${e.odoo_id})">✏️</button>
+        <button class="btn-xs edit" onclick="abrirEditarPin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}',${e.odoo_id})" title="Editar PIN">✏️</button>
+        <button class="btn-xs" style="background:rgba(62,207,142,.15);color:var(--green)" onclick="reregistrarRostro('${e.pin}','${e.nombre.replace(/'/g,"\\'")}')">📸</button>
         <button class="btn-xs del" onclick="abrirEliminar('${e.pin}','${e.nombre.replace(/'/g,"\\'")}')">🗑️</button>
       </div>
     </div>`;
@@ -762,33 +764,34 @@ async function renderTabEmpleados(filtro=''){
   c.innerHTML=html;
 }
 
-function mostrarFormAgregar(){
+async function sincronizarOdoo(){
   const c=document.getElementById('admin-content');
-  c.innerHTML=`
-    <div class="section-title">Agregar empleado</div>
-    <div class="form-dark">
-      <div><label>Nombre completo</label><input type="text" id="fa-nombre" placeholder="MARIA GARCIA"/></div>
-      <div><label>Odoo ID</label><input type="number" id="fa-id" placeholder="145"/></div>
-      <div><label>PIN (4-6 dígitos)</label><input type="text" id="fa-pin" placeholder="1079" maxlength="6"/></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn-ghost" onclick="renderTabEmpleados()">Cancelar</button>
-      <button class="btn-gold" onclick="guardarNuevoEmp()">💾 Guardar</button>
-    </div>`;
-}
-
-async function guardarNuevoEmp(){
-  const nombre=document.getElementById('fa-nombre').value.trim().toUpperCase();
-  const odoo_id=document.getElementById('fa-id').value.trim();
-  const pin=document.getElementById('fa-pin').value.trim();
-  if(!nombre||!odoo_id||!pin){toast('Completa todos los campos','err');return;}
-  if(pin.length<4||isNaN(pin)){toast('PIN inválido','err');return;}
+  c.innerHTML='<div style="text-align:center;padding:32px;color:rgba(255,255,255,.4)">⏳ Sincronizando con Odoo...</div>';
   try{
-    const r=await fetch(`${CONFIG.servidor}/admin/pin`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({odoo_id:parseInt(odoo_id),nombre,pin})});
-    const d=await r.json();
-    if(d.ok){toast('✅ Empleado guardado','ok');empleadosAdmin=[];renderTabEmpleados();}
-    else toast(d.error||'Error','err');
-  }catch(e){toast('Error de conexión','err');}
+    const ro=await fetch(`${CONFIG.servidor}/admin/odoo-empleados`,{headers:{'x-admin-key':CONFIG.adminKey}});
+    const odooData=await ro.json();
+    const odooEmps=odooData.empleados||[];
+    const rp=await fetch(`${CONFIG.servidor}/admin/empleados`,{headers:{'x-admin-key':CONFIG.adminKey}});
+    const pinData=await rp.json();
+    const pinsActuales=pinData.empleados||[];
+    const pinsUsados=pinsActuales.map(e=>parseInt(e.pin)).filter(n=>!isNaN(n));
+    let nextPIN=pinsUsados.length?Math.max(...pinsUsados)+1:1001;
+    const sinPin=odooEmps.filter(oe=>!pinsActuales.find(p=>p.odoo_id===oe.id));
+    if(!sinPin.length){toast('✅ Todo sincronizado, sin cambios','ok');empleadosAdmin=[];renderTabEmpleados();return;}
+    let asignados=0;
+    for(const emp of sinPin){
+      const pin=String(nextPIN++);
+      try{
+        await fetch(`${CONFIG.servidor}/admin/pin`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({odoo_id:emp.id,nombre:emp.name,pin})});
+        asignados++;
+      }catch(e){}
+    }
+    toast(`✅ ${asignados} empleado(s) sincronizado(s)`,'ok');
+    empleadosAdmin=[];renderTabEmpleados();
+  }catch(e){
+    c.innerHTML='<div style="color:var(--red);padding:20px;text-align:center">Error al sincronizar</div>';
+    toast('Error de conexión','err');
+  }
 }
 
 function abrirEditarPin(pin,nombre,odooId){
