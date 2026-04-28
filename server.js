@@ -165,9 +165,9 @@ function requireAdmin(req,res,next) {
 async function getEstadoEmpleado(odoo_id) {
   // Calcular inicio del dia en RD (UTC-4)
   const hoy = new Date();
-  hoy.setHours(hoy.getHours() - 4); // convertir a hora RD
+  hoy.setHours(hoy.getHours() - 4);
   const inicioRD = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0);
-  inicioRD.setHours(inicioRD.getHours() + 4); // volver a UTC para query
+  inicioRD.setHours(inicioRD.getHours() + 4);
   const inicioStr = inicioRD.toISOString().replace('T',' ').substring(0,19);
 
   const registros = await odooExecute('hr.attendance','search_read',
@@ -175,28 +175,35 @@ async function getEstadoEmpleado(odoo_id) {
     {fields:['id','check_in','check_out'],order:'check_in asc'}
   );
 
+  // Sin registros hoy → siempre es primera entrada (sin importar la hora)
   if (!registros || registros.length === 0) return { estado: 'sin_entrada', registros: [] };
 
   const ultimo = registros[registros.length - 1];
   const totalRegistros = registros.length;
-
-  // Lógica basada en cantidad de registros y estado del último:
-  // 1 registro abierto  → en_trabajo (primera entrada del día)
-  // 1 registro cerrado  → en_almuerzo (salió a almorzar, aún no regresó)  
-  // 2 registros, último abierto  → regreso_almuerzo (ya almorzó, está dentro)
-  // 2 registros, último cerrado  → salio (completó jornada)
+  const horaActual = horaAMinutos(ahoraRD());
+  const corteAlmuerzo = horaAMinutos('16:00'); // 3:00pm — después de esto no hay salida a almorzar
 
   if (!ultimo.check_out) {
-    // Hay un registro abierto
-    if (totalRegistros === 1) return { estado: 'en_trabajo', registros, ultimo };
-    if (totalRegistros >= 2) return { estado: 'regreso_almuerzo', registros, ultimo };
+    // Tiene registro abierto → está dentro
+    if (totalRegistros === 1) {
+      // Primera entrada del día — ¿sale a almorzar o salida final?
+      if (horaActual < corteAlmuerzo) {
+        return { estado: 'en_trabajo', registros, ultimo }; // botón: Salida a Almorzar
+      } else {
+        return { estado: 'regreso_almuerzo', registros, ultimo }; // botón: Salida Final (saltó almuerzo)
+      }
+    }
+    // Segundo registro abierto → regresó del almuerzo, próximo paso es salida final
+    return { estado: 'regreso_almuerzo', registros, ultimo };
   } else {
-    // Todos los registros están cerrados
-    if (totalRegistros === 1) return { estado: 'en_almuerzo', registros, ultimo };
-    if (totalRegistros >= 2) return { estado: 'salio', registros, ultimo };
+    // Todos los registros cerrados
+    if (totalRegistros === 1) {
+      // Salió del primer bloque → está en almuerzo
+      return { estado: 'en_almuerzo', registros, ultimo };
+    }
+    // 2+ registros cerrados → jornada completada
+    return { estado: 'salio', registros, ultimo };
   }
-
-  return { estado: 'sin_entrada', registros: [] };
 }
 
 // ── CALCULAR DESCUENTOS Y BANCO ───────────────────────────────────────────────
