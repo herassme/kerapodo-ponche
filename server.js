@@ -71,6 +71,15 @@ function diaRD() {
   return d.getDay();
 }
 
+// ── INICIO DEL DÍA EN RD ─────────────────────────────────────────────────────
+function inicioDiaUTC() {
+  // RD = UTC-4. Calcula medianoche RD expresada en UTC
+  const ahoraRDms = Date.now() - (4 * 60 * 60 * 1000);
+  const d = new Date(ahoraRDms);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 4, 0, 0))
+    .toISOString().replace('T',' ').substring(0,19);
+}
+
 // ── AUTO-CARGA PINES ──────────────────────────────────────────────────────────
 function fetchURL(url) {
   return new Promise((resolve, reject) => {
@@ -163,12 +172,7 @@ function requireAdmin(req,res,next) {
 
 // ── ESTADO DEL EMPLEADO HOY ───────────────────────────────────────────────────
 async function getEstadoEmpleado(odoo_id) {
-  // Calcular inicio del dia en RD (UTC-4)
-  const hoy = new Date();
-  hoy.setHours(hoy.getHours() - 4);
-  const inicioRD = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0);
-  inicioRD.setHours(inicioRD.getHours() + 4);
-  const inicioStr = inicioRD.toISOString().replace('T',' ').substring(0,19);
+  const inicioStr = inicioDiaUTC();
 
   const registros = await odooExecute('hr.attendance','search_read',
     [[['employee_id','=',odoo_id],['check_in','>=',inicioStr]]],
@@ -382,11 +386,7 @@ app.post('/ponche', async (req,res) => {
 // Se llama automáticamente a las 2:00 PM para empleados sin almuerzo
 app.post('/admin/alerta-almuerzo', requireAdmin, async (req,res) => {
   try {
-    const hoy = new Date();
-    hoy.setHours(hoy.getHours() + 4);
-    const inicioRD = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    inicioRD.setHours(inicioRD.getHours() - 4);
-    const inicioStr = inicioRD.toISOString().replace('T',' ').substring(0,19);
+    const inicioStr = inicioDiaUTC();
 
     // Buscar empleados con entrada pero sin almuerzo
     const registros = await odooExecute('hr.attendance','search_read',
@@ -414,11 +414,13 @@ app.post('/admin/alerta-almuerzo', requireAdmin, async (req,res) => {
 // ── REPORTE DEL DÍA ───────────────────────────────────────────────────────────
 app.get('/admin/reporte-hoy', requireAdmin, async (req,res) => {
   try {
-    const hoy = new Date();
-    hoy.setHours(hoy.getHours() + 4);
-    const inicioRD = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    inicioRD.setHours(inicioRD.getHours() - 4);
-    const inicioStr = inicioRD.toISOString().replace('T',' ').substring(0,19);
+    // Calcular inicio del dia en RD (UTC-4)
+    const ahoraUTCms = Date.now();
+    const ahoraRDms  = ahoraUTCms - (4 * 60 * 60 * 1000);
+    const dRD        = new Date(ahoraRDms);
+    // Inicio del dia RD en UTC
+    const inicioRD   = new Date(Date.UTC(dRD.getUTCFullYear(), dRD.getUTCMonth(), dRD.getUTCDate(), 4, 0, 0));
+    const inicioStr  = inicioRD.toISOString().replace('T',' ').substring(0,19);
     const horario = getHorarioHoy();
 
     const registros = await odooExecute('hr.attendance','search_read',
@@ -487,9 +489,7 @@ app.get('/admin/odoo-empleados', requireAdmin, async (req,res) => {
 
 app.get('/admin/asistencias-hoy', requireAdmin, async (req,res) => {
   try {
-    const hoy=new Date(); hoy.setHours(hoy.getHours()+4);
-    const ini=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()); ini.setHours(ini.getHours()-4);
-    const a=await odooExecute('hr.attendance','search_read',[[['check_in','>=',ini.toISOString().replace('T',' ').substring(0,19)]]],{fields:['employee_id','check_in','check_out','worked_hours','reason'],order:'check_in desc',limit:200});
+    const a=await odooExecute('hr.attendance','search_read',[[['check_in','>=',inicioDiaUTC()]]],{fields:['employee_id','check_in','check_out','worked_hours','reason'],order:'check_in desc',limit:200});
     res.json({total:a.length,asistencias:a});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
