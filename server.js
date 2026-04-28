@@ -163,35 +163,40 @@ function requireAdmin(req,res,next) {
 
 // ── ESTADO DEL EMPLEADO HOY ───────────────────────────────────────────────────
 async function getEstadoEmpleado(odoo_id) {
-  // Buscar registros de hoy
+  // Calcular inicio del dia en RD (UTC-4)
   const hoy = new Date();
-  hoy.setHours(hoy.getHours() + 4); // RD time
-  const inicioRD = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  inicioRD.setHours(inicioRD.getHours() - 4); // back to UTC
+  hoy.setHours(hoy.getHours() - 4); // convertir a hora RD
+  const inicioRD = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0);
+  inicioRD.setHours(inicioRD.getHours() + 4); // volver a UTC para query
   const inicioStr = inicioRD.toISOString().replace('T',' ').substring(0,19);
 
   const registros = await odooExecute('hr.attendance','search_read',
     [[['employee_id','=',odoo_id],['check_in','>=',inicioStr]]],
-    {fields:['id','check_in','check_out','reason'],order:'check_in asc'}
+    {fields:['id','check_in','check_out'],order:'check_in asc'}
   );
 
-  // Analizar estado
   if (!registros || registros.length === 0) return { estado: 'sin_entrada', registros: [] };
 
   const ultimo = registros[registros.length - 1];
+  const totalRegistros = registros.length;
 
-  // Si el último registro tiene check_out y reason=almuerzo → está en almuerzo
-  if (ultimo.check_out && ultimo.reason === 'salida_almuerzo') return { estado: 'en_almuerzo', registros, ultimo };
+  // Lógica basada en cantidad de registros y estado del último:
+  // 1 registro abierto  → en_trabajo (primera entrada del día)
+  // 1 registro cerrado  → en_almuerzo (salió a almorzar, aún no regresó)  
+  // 2 registros, último abierto  → regreso_almuerzo (ya almorzó, está dentro)
+  // 2 registros, último cerrado  → salio (completó jornada)
 
-  // Si el último registro NO tiene check_out → está dentro
   if (!ultimo.check_out) {
-    // ¿Ya almorzó? Buscar si hay algún registro con reason=salida_almuerzo cerrado
-    const yaAlmorzo = registros.some(r => r.reason === 'salida_almuerzo' && r.check_out);
-    return { estado: yaAlmorzo ? 'regreso_almuerzo' : 'en_trabajo', registros, ultimo };
+    // Hay un registro abierto
+    if (totalRegistros === 1) return { estado: 'en_trabajo', registros, ultimo };
+    if (totalRegistros >= 2) return { estado: 'regreso_almuerzo', registros, ultimo };
+  } else {
+    // Todos los registros están cerrados
+    if (totalRegistros === 1) return { estado: 'en_almuerzo', registros, ultimo };
+    if (totalRegistros >= 2) return { estado: 'salio', registros, ultimo };
   }
 
-  // Todos los registros tienen check_out → salió
-  return { estado: 'salio', registros, ultimo };
+  return { estado: 'sin_entrada', registros: [] };
 }
 
 // ── CALCULAR DESCUENTOS Y BANCO ───────────────────────────────────────────────
@@ -281,7 +286,7 @@ app.post('/ponche', async (req,res) => {
           alertas.push(`⚠️ Llegada tarde: ${retraso} minutos`);
         }
         attendance_id = await odooExecute('hr.attendance','create',[{
-          employee_id: e.odoo_id, check_in: ahora, reason: 'entrada'
+          employee_id: e.odoo_id, check_in: ahora
         }]);
         mensaje = 'ENTRADA REGISTRADA';
         break;
@@ -294,7 +299,7 @@ app.post('/ponche', async (req,res) => {
           {fields:['id'],limit:1}
         );
         if (!abiertos||abiertos.length===0) return res.json({ok:false,error:'No hay entrada activa'});
-        await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora, reason:'salida_almuerzo'}]);
+        await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora}]);
         attendance_id = abiertos[0].id;
         mensaje = 'SALIDA A ALMORZAR';
         break;
@@ -315,16 +320,16 @@ app.post('/ponche', async (req,res) => {
             alertas.push(`⚠️ Exceso de almuerzo: ${exceso} minutos serán descontados`);
             // Crear nota en Odoo
             await odooExecute('hr.attendance','create',[{
-              employee_id: e.odoo_id, check_in: ahora, reason: `regreso_almuerzo|exceso:${exceso}`
+              employee_id: e.odoo_id, check_in: ahora
             }]);
           } else {
             await odooExecute('hr.attendance','create',[{
-              employee_id: e.odoo_id, check_in: ahora, reason: 'regreso_almuerzo'
+              employee_id: e.odoo_id, check_in: ahora
             }]);
           }
         } else {
           await odooExecute('hr.attendance','create',[{
-            employee_id: e.odoo_id, check_in: ahora, reason: 'regreso_almuerzo'
+            employee_id: e.odoo_id, check_in: ahora
           }]);
         }
         mensaje = 'REGRESO DE ALMUERZO';
@@ -344,9 +349,9 @@ app.post('/ponche', async (req,res) => {
         if (minSalida > minExtra) {
           const extra = minSalida - minExtra;
           alertas.push(`✅ Tiempo extra: ${extra} minutos acreditados`);
-          await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora, reason:`salida_final|extra:${extra}`}]);
+          await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora}]);
         } else {
-          await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora, reason:'salida_final'}]);
+          await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora}]);
         }
         attendance_id = abiertos[0].id;
         mensaje = 'SALIDA REGISTRADA';
