@@ -6,6 +6,7 @@
 <title>Kerapodo — Asistencia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
 <style>
 :root {
   --bg:#f5f0e8;--bg2:#ede7d9;--navy:#1a2744;--navy2:#243258;
@@ -22,73 +23,117 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .bg-deco::before{content:'';position:absolute;top:-120px;right:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(201,146,58,.18) 0%,transparent 70%)}
 .bg-deco::after{content:'';position:absolute;bottom:-80px;left:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(26,39,68,.08) 0%,transparent 70%)}
 .bg-line{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--navy),var(--gold),var(--navy))}
-#app{position:relative;z-index:1;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+#app{position:relative;z-index:1;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+ 
+/* CARD */
 .card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);width:100%;max-width:380px;overflow:hidden;animation:slideUp .5s cubic-bezier(.34,1.4,.64,1)}
 @keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
-.card-header{background:var(--navy);padding:28px 28px 24px;text-align:center;position:relative;overflow:hidden}
+.card-header{background:var(--navy);padding:20px 24px 18px;text-align:center;position:relative;overflow:hidden}
 .card-header::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,146,58,.12)}
-.card-header::after{content:'';position:absolute;bottom:-30px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04)}
-.brand-logo{font-family:var(--font-head);font-size:32px;font-weight:700;color:var(--white);letter-spacing:.02em;position:relative;z-index:1}
+.brand-logo{font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--white);letter-spacing:.02em;position:relative;z-index:1}
 .brand-logo span{color:var(--gold2)}
-.brand-tag{font-size:10px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:3px;position:relative;z-index:1}
-.reloj-bloque{margin-top:16px;position:relative;z-index:1}
-.reloj-hora{font-family:var(--font-head);font-size:52px;font-weight:600;color:var(--white);line-height:1;letter-spacing:-.02em}
-.reloj-fecha{font-size:12px;color:rgba(255,255,255,.5);margin-top:4px;font-weight:400;letter-spacing:.05em}
-.sucursal-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(201,146,58,.2);border:1px solid rgba(201,146,58,.4);color:var(--gold2);font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;padding:5px 14px;border-radius:40px;margin-top:10px}
+.brand-tag{font-size:10px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:2px;position:relative;z-index:1}
+.reloj-bloque{margin-top:12px;position:relative;z-index:1}
+.reloj-hora{font-family:var(--font-head);font-size:44px;font-weight:600;color:var(--white);line-height:1;letter-spacing:-.02em}
+.reloj-fecha{font-size:11px;color:rgba(255,255,255,.5);margin-top:3px}
+.sucursal-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(201,146,58,.2);border:1px solid rgba(201,146,58,.4);color:var(--gold2);font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;padding:4px 12px;border-radius:40px;margin-top:8px}
 .sucursal-pill::before{content:'📍';font-size:9px}
-.card-body{padding:28px 24px 24px;display:flex;flex-direction:column;align-items:center;gap:20px}
-.pin-label{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:.05em;text-align:center}
-.pin-dots{display:flex;gap:12px;align-items:center;justify-content:center;height:18px}
+.card-body{padding:20px 20px 18px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.pin-label{font-size:12px;font-weight:500;color:var(--muted);text-align:center}
+.pin-dots{display:flex;gap:12px;align-items:center;height:16px}
 .pin-dot{width:10px;height:10px;border-radius:50%;background:var(--bg2);border:2px solid #d8d0c0;transition:all .2s cubic-bezier(.34,1.56,.64,1)}
 .pin-dot.filled{background:var(--gold);border-color:var(--gold);transform:scale(1.3);box-shadow:0 0 0 4px rgba(201,146,58,.15)}
-.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
-.tecla{background:var(--bg);border:1.5px solid #e0d8cc;border-radius:var(--radius-sm);color:var(--navy);font-family:var(--font-body);font-size:22px;font-weight:600;aspect-ratio:1.15;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s ease;box-shadow:0 2px 6px rgba(26,39,68,.06)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.tecla{background:var(--bg);border:1.5px solid #e0d8cc;border-radius:var(--radius-sm);color:var(--navy);font-family:var(--font-body);font-size:20px;font-weight:600;aspect-ratio:1.2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s ease;box-shadow:0 2px 6px rgba(26,39,68,.06)}
 .tecla:active,.tecla.press{background:var(--gold-pale);border-color:var(--gold);color:var(--gold);transform:scale(.93);box-shadow:none}
-.tecla.del{font-size:18px;color:var(--muted);font-weight:400}
+.tecla.del{font-size:16px;color:var(--muted)}
 .tecla.del:active{color:var(--red);border-color:var(--red);background:var(--red-bg)}
-.tecla.enter{grid-column:span 3;aspect-ratio:auto;padding:17px;background:var(--navy);border-color:var(--navy);color:var(--white);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(26,39,68,.25)}
-.tecla.enter:active{background:var(--navy2);transform:scale(.97);box-shadow:none}
+.tecla.enter{grid-column:span 3;aspect-ratio:auto;padding:14px;background:var(--navy);border-color:var(--navy);color:var(--white);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(26,39,68,.25)}
+.tecla.enter:active{background:var(--navy2);transform:scale(.97)}
 .tecla.enter.loading{background:var(--bg2);border-color:var(--bg2);color:var(--muted);cursor:not-allowed;transform:none;box-shadow:none}
+ 
+/* CAMARA OVERLAY */
+#cam-overlay{position:fixed;inset:0;z-index:150;background:rgba(26,39,68,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
+#cam-overlay.show{display:flex}
+.cam-titulo{font-family:var(--font-head);font-size:22px;color:var(--white);text-align:center}
+.cam-subtitulo{font-size:12px;color:rgba(255,255,255,.6);text-align:center;letter-spacing:.05em}
+.cam-wrap{position:relative;width:220px;height:220px}
+#cam-video{width:220px;height:220px;object-fit:cover;border-radius:50%;transform:scaleX(-1)}
+.cam-ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--gold);animation:pulseRing 1.5s ease-in-out infinite}
+@keyframes pulseRing{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.04)}}
+.cam-ring.scanning{border-color:var(--gold);animation:pulseRing 0.8s ease-in-out infinite}
+.cam-ring.ok{border-color:var(--green);animation:none}
+.cam-ring.fail{border-color:var(--red);animation:none}
+#cam-canvas{display:none}
+.cam-status{font-size:13px;font-weight:600;color:rgba(255,255,255,.8);text-align:center;min-height:18px;letter-spacing:.05em}
+.cam-status.ok{color:var(--green)}
+.cam-status.fail{color:var(--red)}
+.cam-cancel{font-size:12px;color:rgba(255,255,255,.4);cursor:pointer;text-decoration:underline;margin-top:4px}
+ 
+/* REGISTRO FACIAL (admin) */
+#reg-overlay{position:fixed;inset:0;z-index:160;background:rgba(26,39,68,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px}
+#reg-overlay.show{display:flex}
+.reg-titulo{font-family:var(--font-head);font-size:22px;color:var(--white);text-align:center}
+.reg-sub{font-size:12px;color:rgba(255,255,255,.5);text-align:center}
+.reg-wrap{position:relative;width:200px;height:200px}
+#reg-video{width:200px;height:200px;object-fit:cover;border-radius:50%;transform:scaleX(-1)}
+.reg-ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid rgba(201,146,58,.5)}
+#reg-canvas{display:none}
+.reg-nombre{font-size:14px;font-weight:600;color:var(--gold2);text-align:center}
+.reg-btn{background:var(--gold);color:#000;border:none;font-family:var(--font-body);font-size:13px;font-weight:700;padding:14px 32px;border-radius:var(--radius-sm);cursor:pointer;letter-spacing:.08em}
+.reg-btn:disabled{background:var(--bg2);color:var(--muted);cursor:not-allowed}
+.reg-msg{font-size:12px;color:rgba(255,255,255,.6);text-align:center;min-height:16px}
+.reg-msg.ok{color:var(--green)}
+.reg-msg.err{color:var(--red)}
+.reg-cancel{font-size:12px;color:rgba(255,255,255,.3);cursor:pointer;text-decoration:underline}
+ 
+/* RESULTADO */
 #overlay{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;text-align:center;opacity:0;pointer-events:none;transition:opacity .3s ease;background:var(--bg)}
 #overlay.show{opacity:1;pointer-events:all}
-.overlay-card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);padding:40px 32px;width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:12px;animation:popIn .35s cubic-bezier(.34,1.56,.64,1)}
+.overlay-card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);padding:36px 28px;width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:10px;animation:popIn .35s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
 .overlay-card.entrada{border-top:4px solid var(--green)}
 .overlay-card.salida{border-top:4px solid var(--gold)}
 .overlay-card.error{border-top:4px solid var(--red)}
-.res-emoji{font-size:64px;line-height:1;margin-bottom:4px}
-.res-nombre{font-family:var(--font-head);font-size:26px;font-weight:700;color:var(--navy);line-height:1.2}
-.res-badge{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:6px 16px;border-radius:40px}
+.res-emoji{font-size:56px;line-height:1}
+.res-nombre{font-family:var(--font-head);font-size:24px;font-weight:700;color:var(--navy);line-height:1.2}
+.res-badge{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:5px 14px;border-radius:40px}
 .res-badge.entrada{background:var(--green-bg);color:var(--green)}
 .res-badge.salida{background:var(--gold-pale);color:var(--gold)}
 .res-badge.error{background:var(--red-bg);color:var(--red)}
-.res-hora{font-family:var(--font-head);font-size:42px;font-weight:600;color:var(--navy);letter-spacing:-.02em}
-.res-sub{font-size:12px;color:var(--muted)}
-.barra-wrap{width:100%;height:3px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:8px}
+.res-hora{font-family:var(--font-head);font-size:38px;font-weight:600;color:var(--navy)}
+.res-sub{font-size:11px;color:var(--muted)}
+.barra-wrap{width:100%;height:3px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:6px}
 .barra-fill{height:100%;border-radius:4px;width:100%;transform-origin:left;animation:shrink var(--dur,4s) linear forwards}
 .barra-fill.entrada{background:var(--green)}
 .barra-fill.salida{background:var(--gold)}
 .barra-fill.error{background:var(--red)}
 @keyframes shrink{to{transform:scaleX(0)}}
-#admin-overlay{position:fixed;inset:0;z-index:200;background:rgba(26,39,68,.92);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
+ 
+/* ADMIN */
+#admin-overlay{position:fixed;inset:0;z-index:200;background:rgba(26,39,68,.95);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px}
 #admin-overlay.show{display:flex}
-.admin-card{background:var(--white);border-radius:24px;padding:32px 28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow-lg)}
-.admin-title{font-family:var(--font-head);font-size:24px;color:var(--navy);text-align:center;margin-bottom:4px}
-.admin-field{display:flex;flex-direction:column;gap:6px}
-.admin-field label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
-.admin-field input,.admin-field select{background:var(--bg);border:1.5px solid #e0d8cc;color:var(--navy);font-family:var(--font-body);font-size:14px;font-weight:500;padding:12px 14px;border-radius:var(--radius-sm);outline:none;width:100%;transition:border-color .2s}
+.admin-card{background:var(--white);border-radius:24px;padding:28px 24px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto}
+.admin-title{font-family:var(--font-head);font-size:22px;color:var(--navy);text-align:center}
+.admin-field{display:flex;flex-direction:column;gap:5px}
+.admin-field label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
+.admin-field input,.admin-field select{background:var(--bg);border:1.5px solid #e0d8cc;color:var(--navy);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 12px;border-radius:var(--radius-sm);outline:none;width:100%;transition:border-color .2s}
 .admin-field input:focus,.admin-field select:focus{border-color:var(--gold)}
-.admin-btn{background:var(--navy);color:var(--white);border:none;font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:15px;border-radius:var(--radius-sm);cursor:pointer;transition:background .2s,transform .1s;box-shadow:0 4px 16px rgba(26,39,68,.2)}
-.admin-btn:hover{background:var(--navy2)}
+.admin-btn{background:var(--navy);color:var(--white);border:none;font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:13px;border-radius:var(--radius-sm);cursor:pointer;box-shadow:0 4px 16px rgba(26,39,68,.2)}
 .admin-btn:active{transform:scale(.97)}
-.admin-msg{font-size:13px;text-align:center;min-height:16px;font-weight:500;color:var(--green)}
+.admin-btn.gold{background:var(--gold);color:#000}
+.admin-msg{font-size:12px;text-align:center;min-height:14px;font-weight:500;color:var(--green)}
 .admin-msg.err{color:var(--red)}
-.admin-close{text-align:center;font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline}
+.admin-close{text-align:center;font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline}
+.admin-divider{border:none;border-top:1px solid #e8e0d4;margin:2px 0}
+ 
 #admin-trigger{position:fixed;bottom:0;right:0;width:70px;height:70px;opacity:0;z-index:50;cursor:default}
 </style>
 </head>
 <body>
 <div class="bg-deco"><div class="bg-line"></div></div>
+ 
+<!-- APP PRINCIPAL -->
 <div id="app">
   <div class="card">
     <div class="card-header">
@@ -107,34 +152,57 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
         <div class="pin-dot"></div><div class="pin-dot"></div>
       </div>
       <div class="teclado" id="teclado">
-        <div class="tecla" data-n="1">1</div>
-        <div class="tecla" data-n="2">2</div>
-        <div class="tecla" data-n="3">3</div>
-        <div class="tecla" data-n="4">4</div>
-        <div class="tecla" data-n="5">5</div>
-        <div class="tecla" data-n="6">6</div>
-        <div class="tecla" data-n="7">7</div>
-        <div class="tecla" data-n="8">8</div>
-        <div class="tecla" data-n="9">9</div>
-        <div class="tecla del" data-n="del">⌫</div>
-        <div class="tecla" data-n="0">0</div>
+        <div class="tecla" data-n="1">1</div><div class="tecla" data-n="2">2</div><div class="tecla" data-n="3">3</div>
+        <div class="tecla" data-n="4">4</div><div class="tecla" data-n="5">5</div><div class="tecla" data-n="6">6</div>
+        <div class="tecla" data-n="7">7</div><div class="tecla" data-n="8">8</div><div class="tecla" data-n="9">9</div>
+        <div class="tecla del" data-n="del">⌫</div><div class="tecla" data-n="0">0</div>
         <div class="tecla enter" id="btn-enter" data-n="enter">Registrar</div>
       </div>
     </div>
   </div>
 </div>
-
+ 
+<!-- CÁMARA VERIFICACIÓN -->
+<div id="cam-overlay">
+  <div class="cam-titulo" id="cam-titulo">Verificando identidad</div>
+  <div class="cam-subtitulo">Mira directo a la cámara</div>
+  <div class="cam-wrap">
+    <video id="cam-video" autoplay playsinline muted></video>
+    <div class="cam-ring" id="cam-ring"></div>
+    <canvas id="cam-canvas"></canvas>
+  </div>
+  <div class="cam-status" id="cam-status">Cargando modelos...</div>
+  <div class="cam-cancel" onclick="cancelarCamara()">Cancelar</div>
+</div>
+ 
+<!-- REGISTRO FACIAL -->
+<div id="reg-overlay">
+  <div class="reg-titulo">Registrar Rostro</div>
+  <div class="reg-sub" id="reg-sub">Empleado seleccionado:</div>
+  <div class="reg-nombre" id="reg-nombre">—</div>
+  <div class="reg-wrap">
+    <video id="reg-video" autoplay playsinline muted></video>
+    <div class="reg-ring"></div>
+    <canvas id="reg-canvas"></canvas>
+  </div>
+  <button class="reg-btn" id="reg-btn" onclick="capturarDescriptor()">📸 Capturar Rostro</button>
+  <div class="reg-msg" id="reg-msg"></div>
+  <div class="reg-cancel" onclick="cerrarRegistro()">Cancelar</div>
+</div>
+ 
+<!-- RESULTADO -->
 <div id="overlay">
   <div class="overlay-card" id="overlay-card">
     <div class="res-emoji" id="res-emoji"></div>
     <div class="res-nombre" id="res-nombre"></div>
     <div class="res-badge" id="res-badge"></div>
     <div class="res-hora" id="res-hora"></div>
-    <div class="res-sub" id="res-sub"></div>
+    <div class="res-sub" id="res-sub-r"></div>
     <div class="barra-wrap"><div class="barra-fill" id="barra-fill"></div></div>
   </div>
 </div>
-
+ 
+<!-- ADMIN -->
 <div id="admin-overlay">
   <div class="admin-card">
     <div class="admin-title">⚙️ Configuración</div>
@@ -154,80 +222,433 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
       <label>URL del servidor</label>
       <input type="url" id="admin-url" placeholder="https://kerapodo-ponche.onrender.com"/>
     </div>
-    <button class="admin-btn" onclick="guardarConfig()">Guardar</button>
+    <button class="admin-btn" onclick="guardarConfig()">Guardar configuración</button>
+    <hr class="admin-divider"/>
+    <div class="admin-field">
+      <label>Registrar rostro de empleado</label>
+      <select id="reg-select">
+        <option value="">— Seleccionar empleado —</option>
+      </select>
+    </div>
+    <button class="admin-btn gold" onclick="iniciarRegistro()">📸 Registrar Rostro</button>
     <div class="admin-msg" id="admin-msg"></div>
-    <div class="admin-close" onclick="cerrarAdmin()">Cancelar</div>
+    <div class="admin-close" onclick="cerrarAdmin()">Cerrar</div>
   </div>
 </div>
-
+ 
 <div id="admin-trigger" onclick="tapAdmin()"></div>
-
+ 
 <script>
-let CONFIG={servidor:localStorage.getItem('kp_servidor')||'',sucursal:localStorage.getItem('kp_sucursal')||'',adminKey:localStorage.getItem('kp_adminKey')||''};
-function actualizarUI(){document.getElementById('sucursal-pill').textContent=CONFIG.sucursal||'Sin configurar'}
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════════════════
+let CONFIG = {
+  servidor: localStorage.getItem('kp_servidor') || '',
+  sucursal: localStorage.getItem('kp_sucursal') || '',
+  adminKey: localStorage.getItem('kp_adminKey') || '',
+};
+// Descriptores faciales guardados localmente { pin: Float32Array }
+let descriptoresFaciales = JSON.parse(localStorage.getItem('kp_descriptores') || '{}');
+// Convertir arrays planos a Float32Array
+Object.keys(descriptoresFaciales).forEach(k => {
+  if (!(descriptoresFaciales[k] instanceof Float32Array)) {
+    descriptoresFaciales[k] = new Float32Array(Object.values(descriptoresFaciales[k]));
+  }
+});
+ 
+let modelsLoaded = false;
+let empleadosLista = []; // lista de empleados con pin y nombre
+ 
+function actualizarUI() {
+  document.getElementById('sucursal-pill').textContent = CONFIG.sucursal || 'Sin configurar';
+}
 actualizarUI();
+ 
+// ── RELOJ ─────────────────────────────────────────────────────────────────────
 const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-function tick(){const n=new Date();document.getElementById('reloj-hora').textContent=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;document.getElementById('reloj-fecha').textContent=`${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`}
-tick();setInterval(tick,10000);
-let pin='',procesando=false;
-function actualizarDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pin.length))}
-function presionar(n){
-  if(procesando)return;
-  if(n==='del'){pin=pin.slice(0,-1)}
-  else if(n==='enter'){if(pin.length>=4)enviarPonche();return}
-  else{if(pin.length>=4)return;pin+=n}
+function tick(){
+  const n=new Date();
+  document.getElementById('reloj-hora').textContent=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('reloj-fecha').textContent=`${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`;
+}
+tick(); setInterval(tick,10000);
+ 
+// ── CARGAR MODELOS FACE-API ───────────────────────────────────────────────────
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+ 
+async function cargarModelos() {
+  if (modelsLoaded) return true;
+  try {
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+    modelsLoaded = true;
+    console.log('✅ Modelos faciales cargados');
+    return true;
+  } catch(e) {
+    console.error('❌ Error cargando modelos:', e);
+    return false;
+  }
+}
+// Pre-cargar modelos en segundo plano
+setTimeout(cargarModelos, 2000);
+ 
+// ── PIN LOGIC ─────────────────────────────────────────────────────────────────
+let pin = '', procesando = false;
+ 
+function actualizarDots() {
+  document.querySelectorAll('.pin-dot').forEach((d,i) => d.classList.toggle('filled', i < pin.length));
+}
+ 
+function presionar(n) {
+  if (procesando) return;
+  if (n==='del') { pin=pin.slice(0,-1); }
+  else if (n==='enter') { if (pin.length>=4) iniciarPonche(); return; }
+  else { if (pin.length>=4) return; pin+=n; }
   actualizarDots();
-  if(pin.length===4)setTimeout(()=>enviarPonche(),200);
+  if (pin.length===4) setTimeout(()=>iniciarPonche(),200);
 }
-document.addEventListener('keydown',e=>{if(e.key>='0'&&e.key<='9')presionar(e.key);else if(e.key==='Backspace')presionar('del');else if(e.key==='Enter')presionar('enter')});
-document.getElementById('teclado').addEventListener('click',e=>{const t=e.target.closest('.tecla');if(!t)return;t.classList.add('press');setTimeout(()=>t.classList.remove('press'),120);presionar(t.dataset.n)});
-function resetPIN(){pin='';procesando=false;actualizarDots();const b=document.getElementById('btn-enter');b.textContent='Registrar';b.classList.remove('loading')}
-async function enviarPonche(){
-  if(procesando||pin.length<4)return;
-  if(!CONFIG.servidor){mostrarResultado('⚙️','Sin configurar','Toca 5 veces la esquina inferior derecha','error',3,'');resetPIN();return}
-  procesando=true;
-  const btn=document.getElementById('btn-enter');btn.textContent='...';btn.classList.add('loading');
-  try{
-    const r=await fetch(`${CONFIG.servidor}/ponche`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({pin,sucursal:CONFIG.sucursal})});
-    const d=await r.json();
-    const ahora=new Date();
-    const hora=`${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
-    if(d.ok){mostrarResultado(d.accion==='entrada'?'👋':'✅',d.nombre,d.accion==='entrada'?'ENTRADA REGISTRADA':'SALIDA REGISTRADA',d.accion,4,hora)}
-    else{mostrarResultado('❌','PIN incorrecto',d.error||'Intenta de nuevo','error',3,'')}
-  }catch(e){mostrarResultado('📡','Sin conexión','Verifica el WiFi e intenta de nuevo','error',3,'')}
-  resetPIN();
+ 
+document.addEventListener('keydown', e => {
+  if (e.key>='0'&&e.key<='9') presionar(e.key);
+  else if (e.key==='Backspace') presionar('del');
+  else if (e.key==='Enter') presionar('enter');
+});
+ 
+document.getElementById('teclado').addEventListener('click', e => {
+  const t = e.target.closest('.tecla');
+  if (!t) return;
+  t.classList.add('press'); setTimeout(()=>t.classList.remove('press'),120);
+  presionar(t.dataset.n);
+});
+ 
+function resetPIN() {
+  pin=''; procesando=false; actualizarDots();
+  const b=document.getElementById('btn-enter');
+  b.textContent='Registrar'; b.classList.remove('loading');
 }
-let overlayTimer=null;
-function mostrarResultado(emoji,nombre,badge,tipo,seg,hora){
+ 
+// ── FLUJO PRINCIPAL ───────────────────────────────────────────────────────────
+async function iniciarPonche() {
+  if (procesando||pin.length<4) return;
+  if (!CONFIG.servidor) {
+    mostrarResultado('⚙️','Sin configurar','Configura el sistema primero','error',3,'');
+    resetPIN(); return;
+  }
+ 
+  procesando = true;
+  const btn = document.getElementById('btn-enter');
+  btn.textContent='...'; btn.classList.add('loading');
+ 
+  // Verificar si el empleado tiene descriptor facial registrado
+  const tieneRostro = descriptoresFaciales[pin] !== undefined;
+ 
+  if (tieneRostro) {
+    // Verificar cara primero
+    const pinGuardado = pin;
+    resetPIN();
+    const verificado = await verificarRostro(pinGuardado);
+    if (verificado) {
+      await enviarPonche(pinGuardado);
+    }
+  } else {
+    // Sin reconocimiento facial — ponche directo
+    const pinGuardado = pin;
+    resetPIN();
+    await enviarPonche(pinGuardado);
+  }
+}
+ 
+// ── VERIFICACIÓN FACIAL ───────────────────────────────────────────────────────
+let streamActivo = null;
+let pinPendiente = null;
+ 
+async function verificarRostro(pinEmp) {
+  return new Promise(async (resolve) => {
+    pinPendiente = { pin: pinEmp, resolve };
+    const overlay = document.getElementById('cam-overlay');
+    const status  = document.getElementById('cam-status');
+    const ring    = document.getElementById('cam-ring');
+    const titulo  = document.getElementById('cam-titulo');
+ 
+    // Buscar nombre del empleado
+    const emp = empleadosLista.find(e => e.pin === pinEmp);
+    titulo.textContent = emp ? `Hola, ${emp.nombre.split(' ')[0]}` : 'Verificando identidad';
+ 
+    overlay.classList.add('show');
+    status.textContent = 'Activando cámara...';
+    status.className = 'cam-status';
+    ring.className = 'cam-ring';
+ 
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      streamActivo = stream;
+      const video = document.getElementById('cam-video');
+      video.srcObject = stream;
+      await new Promise(r => video.onloadedmetadata = r);
+ 
+      if (!modelsLoaded) {
+        status.textContent = 'Cargando modelos IA...';
+        await cargarModelos();
+      }
+ 
+      status.textContent = 'Mirá directo a la cámara 👁️';
+      ring.className = 'cam-ring scanning';
+ 
+      // Intentar detectar y comparar por 8 segundos
+      const descriptor = descriptoresFaciales[pinEmp];
+      const labeledDescriptor = new faceapi.LabeledFaceDescriptors(pinEmp, [descriptor]);
+      const matcher = new faceapi.FaceMatcher([labeledDescriptor], 0.5);
+ 
+      let intentos = 0;
+      const maxIntentos = 16;
+ 
+      const intervalo = setInterval(async () => {
+        intentos++;
+        try {
+          const deteccion = await faceapi
+            .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks(true)
+            .withFaceDescriptor();
+ 
+          if (deteccion) {
+            const resultado = matcher.findBestMatch(deteccion.descriptor);
+            if (resultado.label === pinEmp) {
+              clearInterval(intervalo);
+              ring.className = 'cam-ring ok';
+              status.textContent = '✅ Identidad confirmada';
+              status.className = 'cam-status ok';
+              setTimeout(() => {
+                detenerStream();
+                overlay.classList.remove('show');
+                resolve(true);
+              }, 800);
+            } else {
+              status.textContent = 'Sigue mirando... 👁️';
+            }
+          } else {
+            status.textContent = intentos < 8 ? 'Buscando tu rostro...' : 'Acerca más el teléfono 📱';
+          }
+        } catch(e) { /* continuar */ }
+ 
+        if (intentos >= maxIntentos) {
+          clearInterval(intervalo);
+          ring.className = 'cam-ring fail';
+          status.textContent = '❌ No se pudo verificar';
+          status.className = 'cam-status fail';
+          setTimeout(() => {
+            detenerStream();
+            overlay.classList.remove('show');
+            resolve(false);
+          }, 1500);
+        }
+      }, 500);
+ 
+    } catch(e) {
+      status.textContent = 'Error con la cámara';
+      status.className = 'cam-status fail';
+      setTimeout(() => { detenerStream(); overlay.classList.remove('show'); resolve(false); }, 2000);
+    }
+  });
+}
+ 
+function cancelarCamara() {
+  detenerStream();
+  document.getElementById('cam-overlay').classList.remove('show');
+  if (pinPendiente) { pinPendiente.resolve(false); pinPendiente = null; }
+  procesando = false;
+}
+ 
+function detenerStream() {
+  if (streamActivo) { streamActivo.getTracks().forEach(t=>t.stop()); streamActivo = null; }
+}
+ 
+// ── ENVIAR PONCHE AL SERVIDOR ─────────────────────────────────────────────────
+async function enviarPonche(pinEmp) {
+  try {
+    const r = await fetch(`${CONFIG.servidor}/ponche`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+      body:JSON.stringify({pin:pinEmp,sucursal:CONFIG.sucursal}),
+    });
+    const d = await r.json();
+    const ahora = new Date();
+    const hora = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
+    if (d.ok) {
+      mostrarResultado(d.accion==='entrada'?'👋':'✅', d.nombre, d.accion==='entrada'?'ENTRADA REGISTRADA':'SALIDA REGISTRADA', d.accion, 4, hora);
+    } else {
+      mostrarResultado('❌','PIN incorrecto',d.error||'Intenta de nuevo','error',3,'');
+    }
+  } catch(e) {
+    mostrarResultado('📡','Sin conexión','Verifica el WiFi','error',3,'');
+  }
+  procesando = false;
+}
+ 
+// ── OVERLAY RESULTADO ─────────────────────────────────────────────────────────
+let overlayTimer = null;
+function mostrarResultado(emoji,nombre,badge,tipo,seg,hora) {
   document.getElementById('res-emoji').textContent=emoji;
   document.getElementById('res-nombre').textContent=nombre;
-  const b=document.getElementById('res-badge');b.textContent=badge;b.className=`res-badge ${tipo}`;
+  const b=document.getElementById('res-badge'); b.textContent=badge; b.className=`res-badge ${tipo}`;
   document.getElementById('res-hora').textContent=hora;
-  document.getElementById('res-sub').textContent=hora?CONFIG.sucursal:'';
-  const oc=document.getElementById('overlay-card');oc.className=`overlay-card ${tipo}`;
-  const bf=document.getElementById('barra-fill');bf.className=`barra-fill ${tipo}`;
-  bf.style.setProperty('--dur',`${seg}s`);bf.style.animation='none';bf.offsetHeight;bf.style.animation='';
-  const ov=document.getElementById('overlay');ov.classList.add('show');
-  if(overlayTimer)clearTimeout(overlayTimer);
+  document.getElementById('res-sub-r').textContent=hora?CONFIG.sucursal:'';
+  const oc=document.getElementById('overlay-card'); oc.className=`overlay-card ${tipo}`;
+  const bf=document.getElementById('barra-fill'); bf.className=`barra-fill ${tipo}`;
+  bf.style.setProperty('--dur',`${seg}s`); bf.style.animation='none'; bf.offsetHeight; bf.style.animation='';
+  const ov=document.getElementById('overlay'); ov.classList.add('show');
+  if (overlayTimer) clearTimeout(overlayTimer);
   overlayTimer=setTimeout(()=>ov.classList.remove('show'),seg*1000);
 }
-document.getElementById('overlay').addEventListener('click',()=>{document.getElementById('overlay').classList.remove('show');if(overlayTimer)clearTimeout(overlayTimer)});
-let tapCount=0,tapTimer=null;
-function tapAdmin(){tapCount++;if(tapTimer)clearTimeout(tapTimer);if(tapCount>=5){tapCount=0;abrirAdmin()}else tapTimer=setTimeout(()=>tapCount=0,2000)}
-function abrirAdmin(){document.getElementById('admin-pass').value='';document.getElementById('admin-sucursal').value=CONFIG.sucursal||'';document.getElementById('admin-url').value=CONFIG.servidor||'';document.getElementById('admin-msg').textContent='';document.getElementById('admin-overlay').classList.add('show');setTimeout(()=>document.getElementById('admin-pass').focus(),200)}
-function cerrarAdmin(){document.getElementById('admin-overlay').classList.remove('show')}
-function guardarConfig(){
+document.getElementById('overlay').addEventListener('click',()=>{
+  document.getElementById('overlay').classList.remove('show');
+  if(overlayTimer)clearTimeout(overlayTimer);
+});
+ 
+// ── REGISTRO FACIAL ───────────────────────────────────────────────────────────
+let regStream = null;
+ 
+async function iniciarRegistro() {
+  const sel = document.getElementById('reg-select');
+  const pinSel = sel.value;
+  const nombre = sel.options[sel.selectedIndex]?.text;
+  if (!pinSel) {
+    const msg = document.getElementById('admin-msg');
+    msg.textContent = 'Selecciona un empleado primero';
+    msg.className = 'admin-msg err'; return;
+  }
+ 
+  cerrarAdmin();
+  const overlay = document.getElementById('reg-overlay');
+  document.getElementById('reg-nombre').textContent = nombre;
+  document.getElementById('reg-msg').textContent = '';
+  document.getElementById('reg-msg').className = 'reg-msg';
+  overlay.classList.add('show');
+ 
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    regStream = stream;
+    const video = document.getElementById('reg-video');
+    video.srcObject = stream;
+ 
+    if (!modelsLoaded) {
+      document.getElementById('reg-msg').textContent = 'Cargando modelos IA...';
+      await cargarModelos();
+    }
+    document.getElementById('reg-msg').textContent = 'Listo. Coloca tu cara en el círculo y presiona Capturar.';
+    document.getElementById('reg-btn').disabled = false;
+    document.getElementById('reg-btn').dataset.pin = pinSel;
+  } catch(e) {
+    document.getElementById('reg-msg').textContent = 'Error activando cámara';
+    document.getElementById('reg-msg').className = 'reg-msg err';
+  }
+}
+ 
+async function capturarDescriptor() {
+  const btn = document.getElementById('reg-btn');
+  const msg = document.getElementById('reg-msg');
+  const pinEmp = btn.dataset.pin;
+  btn.disabled = true;
+  msg.textContent = 'Detectando rostro...';
+  msg.className = 'reg-msg';
+ 
+  try {
+    const video = document.getElementById('reg-video');
+    const deteccion = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks(true)
+      .withFaceDescriptor();
+ 
+    if (!deteccion) {
+      msg.textContent = 'No se detectó rostro. Intenta de nuevo.';
+      msg.className = 'reg-msg err';
+      btn.disabled = false; return;
+    }
+ 
+    // Guardar descriptor
+    descriptoresFaciales[pinEmp] = deteccion.descriptor;
+    // Convertir a objeto simple para localStorage
+    const plain = {};
+    deteccion.descriptor.forEach((v,i) => plain[i]=v);
+    const stored = JSON.parse(localStorage.getItem('kp_descriptores')||'{}');
+    stored[pinEmp] = plain;
+    localStorage.setItem('kp_descriptores', JSON.stringify(stored));
+ 
+    msg.textContent = '✅ Rostro registrado correctamente';
+    msg.className = 'reg-msg ok';
+    setTimeout(()=>cerrarRegistro(), 1500);
+  } catch(e) {
+    msg.textContent = 'Error: ' + e.message;
+    msg.className = 'reg-msg err';
+    btn.disabled = false;
+  }
+}
+ 
+function cerrarRegistro() {
+  if (regStream) { regStream.getTracks().forEach(t=>t.stop()); regStream=null; }
+  document.getElementById('reg-overlay').classList.remove('show');
+  document.getElementById('reg-btn').disabled = true;
+}
+ 
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+let tapCount=0, tapTimer=null;
+function tapAdmin(){
+  tapCount++;
+  if(tapTimer)clearTimeout(tapTimer);
+  if(tapCount>=5){tapCount=0;abrirAdmin();}
+  else tapTimer=setTimeout(()=>tapCount=0,2000);
+}
+ 
+async function abrirAdmin() {
+  document.getElementById('admin-pass').value='';
+  document.getElementById('admin-sucursal').value=CONFIG.sucursal||'';
+  document.getElementById('admin-url').value=CONFIG.servidor||'';
+  document.getElementById('admin-msg').textContent='';
+ 
+  // Cargar lista de empleados para el select de registro
+  const sel = document.getElementById('reg-select');
+  sel.innerHTML = '<option value="">— Seleccionar empleado —</option>';
+ 
+  if (CONFIG.servidor && CONFIG.adminKey) {
+    try {
+      const r = await fetch(`${CONFIG.servidor}/admin/empleados`, {headers:{'x-admin-key':CONFIG.adminKey}});
+      const d = await r.json();
+      empleadosLista = d.empleados || [];
+      empleadosLista.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.pin;
+        opt.textContent = `${e.nombre} (PIN: ${e.pin})`;
+        sel.appendChild(opt);
+      });
+    } catch(e) { /* sin servidor */ }
+  }
+ 
+  document.getElementById('admin-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('admin-pass').focus(),200);
+}
+ 
+function cerrarAdmin() {
+  document.getElementById('admin-overlay').classList.remove('show');
+}
+ 
+function guardarConfig() {
   const pass=document.getElementById('admin-pass').value.trim();
   const suc=document.getElementById('admin-sucursal').value;
   const url=document.getElementById('admin-url').value.trim();
   const msg=document.getElementById('admin-msg');
   if(!pass){msg.textContent='Ingresa la contraseña';msg.className='admin-msg err';return}
   if(!suc){msg.textContent='Selecciona una sucursal';msg.className='admin-msg err';return}
-  if(!url){msg.textContent='Ingresa la URL del servidor';msg.className='admin-msg err';return}
+  if(!url){msg.textContent='Ingresa la URL';msg.className='admin-msg err';return}
   CONFIG={servidor:url.replace(/\/$/,''),sucursal:suc,adminKey:pass};
-  localStorage.setItem('kp_servidor',CONFIG.servidor);localStorage.setItem('kp_sucursal',CONFIG.sucursal);localStorage.setItem('kp_adminKey',CONFIG.adminKey);
-  actualizarUI();msg.textContent='✓ Guardado correctamente';msg.className='admin-msg';
+  localStorage.setItem('kp_servidor',CONFIG.servidor);
+  localStorage.setItem('kp_sucursal',CONFIG.sucursal);
+  localStorage.setItem('kp_adminKey',CONFIG.adminKey);
+  actualizarUI();
+  msg.textContent='✓ Guardado correctamente';
+  msg.className='admin-msg';
   setTimeout(cerrarAdmin,1500);
 }
 </script>
