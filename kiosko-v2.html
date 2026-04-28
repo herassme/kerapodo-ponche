@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Kerapodo — Asistencia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#f5f0e8;--bg2:#ede7d9;--navy:#1a2744;--navy2:#243258;
+  --gold:#c9923a;--gold2:#e0a84a;--gold-pale:#f5e6cc;
+  --white:#ffffff;--text:#1a2744;--muted:#7a8099;
+  --green:#2d9e6b;--green-bg:#e8f7f0;--red:#d94f4f;--red-bg:#fdeaea;
+  --radius:20px;--radius-sm:12px;
+  --shadow:0 8px 32px rgba(26,39,68,.10);--shadow-lg:0 20px 60px rgba(26,39,68,.18);
+  --font-head:'Playfair Display',serif;--font-body:'Plus Jakarta Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow:hidden;user-select:none}
+.bg-deco{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.bg-deco::before{content:'';position:absolute;top:-120px;right:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(201,146,58,.18) 0%,transparent 70%)}
+.bg-deco::after{content:'';position:absolute;bottom:-80px;left:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(26,39,68,.08) 0%,transparent 70%)}
+.bg-line{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--navy),var(--gold),var(--navy))}
+#app{position:relative;z-index:1;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);width:100%;max-width:380px;overflow:hidden;animation:slideUp .5s cubic-bezier(.34,1.4,.64,1)}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.card-header{background:var(--navy);padding:28px 28px 24px;text-align:center;position:relative;overflow:hidden}
+.card-header::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,146,58,.12)}
+.card-header::after{content:'';position:absolute;bottom:-30px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04)}
+.brand-logo{font-family:var(--font-head);font-size:32px;font-weight:700;color:var(--white);letter-spacing:.02em;position:relative;z-index:1}
+.brand-logo span{color:var(--gold2)}
+.brand-tag{font-size:10px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:3px;position:relative;z-index:1}
+.reloj-bloque{margin-top:16px;position:relative;z-index:1}
+.reloj-hora{font-family:var(--font-head);font-size:52px;font-weight:600;color:var(--white);line-height:1;letter-spacing:-.02em}
+.reloj-fecha{font-size:12px;color:rgba(255,255,255,.5);margin-top:4px;font-weight:400;letter-spacing:.05em}
+.sucursal-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(201,146,58,.2);border:1px solid rgba(201,146,58,.4);color:var(--gold2);font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;padding:5px 14px;border-radius:40px;margin-top:10px}
+.sucursal-pill::before{content:'📍';font-size:9px}
+.card-body{padding:28px 24px 24px;display:flex;flex-direction:column;align-items:center;gap:20px}
+.pin-label{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:.05em;text-align:center}
+.pin-dots{display:flex;gap:12px;align-items:center;justify-content:center;height:18px}
+.pin-dot{width:10px;height:10px;border-radius:50%;background:var(--bg2);border:2px solid #d8d0c0;transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold);transform:scale(1.3);box-shadow:0 0 0 4px rgba(201,146,58,.15)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+.tecla{background:var(--bg);border:1.5px solid #e0d8cc;border-radius:var(--radius-sm);color:var(--navy);font-family:var(--font-body);font-size:22px;font-weight:600;aspect-ratio:1.15;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s ease;box-shadow:0 2px 6px rgba(26,39,68,.06)}
+.tecla:active,.tecla.press{background:var(--gold-pale);border-color:var(--gold);color:var(--gold);transform:scale(.93);box-shadow:none}
+.tecla.del{font-size:18px;color:var(--muted);font-weight:400}
+.tecla.del:active{color:var(--red);border-color:var(--red);background:var(--red-bg)}
+.tecla.enter{grid-column:span 3;aspect-ratio:auto;padding:17px;background:var(--navy);border-color:var(--navy);color:var(--white);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(26,39,68,.25)}
+.tecla.enter:active{background:var(--navy2);transform:scale(.97);box-shadow:none}
+.tecla.enter.loading{background:var(--bg2);border-color:var(--bg2);color:var(--muted);cursor:not-allowed;transform:none;box-shadow:none}
+#overlay{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;text-align:center;opacity:0;pointer-events:none;transition:opacity .3s ease;background:var(--bg)}
+#overlay.show{opacity:1;pointer-events:all}
+.overlay-card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);padding:40px 32px;width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:12px;animation:popIn .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.overlay-card.entrada{border-top:4px solid var(--green)}
+.overlay-card.salida{border-top:4px solid var(--gold)}
+.overlay-card.error{border-top:4px solid var(--red)}
+.res-emoji{font-size:64px;line-height:1;margin-bottom:4px}
+.res-nombre{font-family:var(--font-head);font-size:26px;font-weight:700;color:var(--navy);line-height:1.2}
+.res-badge{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:6px 16px;border-radius:40px}
+.res-badge.entrada{background:var(--green-bg);color:var(--green)}
+.res-badge.salida{background:var(--gold-pale);color:var(--gold)}
+.res-badge.error{background:var(--red-bg);color:var(--red)}
+.res-hora{font-family:var(--font-head);font-size:42px;font-weight:600;color:var(--navy);letter-spacing:-.02em}
+.res-sub{font-size:12px;color:var(--muted)}
+.barra-wrap{width:100%;height:3px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:8px}
+.barra-fill{height:100%;border-radius:4px;width:100%;transform-origin:left;animation:shrink var(--dur,4s) linear forwards}
+.barra-fill.entrada{background:var(--green)}
+.barra-fill.salida{background:var(--gold)}
+.barra-fill.error{background:var(--red)}
+@keyframes shrink{to{transform:scaleX(0)}}
+#admin-overlay{position:fixed;inset:0;z-index:200;background:rgba(26,39,68,.92);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
+#admin-overlay.show{display:flex}
+.admin-card{background:var(--white);border-radius:24px;padding:32px 28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow-lg)}
+.admin-title{font-family:var(--font-head);font-size:24px;color:var(--navy);text-align:center;margin-bottom:4px}
+.admin-field{display:flex;flex-direction:column;gap:6px}
+.admin-field label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
+.admin-field input,.admin-field select{background:var(--bg);border:1.5px solid #e0d8cc;color:var(--navy);font-family:var(--font-body);font-size:14px;font-weight:500;padding:12px 14px;border-radius:var(--radius-sm);outline:none;width:100%;transition:border-color .2s}
+.admin-field input:focus,.admin-field select:focus{border-color:var(--gold)}
+.admin-btn{background:var(--navy);color:var(--white);border:none;font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:15px;border-radius:var(--radius-sm);cursor:pointer;transition:background .2s,transform .1s;box-shadow:0 4px 16px rgba(26,39,68,.2)}
+.admin-btn:hover{background:var(--navy2)}
+.admin-btn:active{transform:scale(.97)}
+.admin-msg{font-size:13px;text-align:center;min-height:16px;font-weight:500;color:var(--green)}
+.admin-msg.err{color:var(--red)}
+.admin-close{text-align:center;font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline}
+#admin-trigger{position:fixed;bottom:0;right:0;width:70px;height:70px;opacity:0;z-index:50;cursor:default}
+</style>
+</head>
+<body>
+<div class="bg-deco"><div class="bg-line"></div></div>
+<div id="app">
+  <div class="card">
+    <div class="card-header">
+      <div class="brand-logo">Kera<span>podo</span></div>
+      <div class="brand-tag">Control de Asistencia</div>
+      <div class="reloj-bloque">
+        <div class="reloj-hora" id="reloj-hora">--:--</div>
+        <div class="reloj-fecha" id="reloj-fecha">---</div>
+      </div>
+      <div class="sucursal-pill" id="sucursal-pill">Sin configurar</div>
+    </div>
+    <div class="card-body">
+      <div class="pin-label">Ingresa tu PIN para registrar tu asistencia</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div class="teclado" id="teclado">
+        <div class="tecla" data-n="1">1</div>
+        <div class="tecla" data-n="2">2</div>
+        <div class="tecla" data-n="3">3</div>
+        <div class="tecla" data-n="4">4</div>
+        <div class="tecla" data-n="5">5</div>
+        <div class="tecla" data-n="6">6</div>
+        <div class="tecla" data-n="7">7</div>
+        <div class="tecla" data-n="8">8</div>
+        <div class="tecla" data-n="9">9</div>
+        <div class="tecla del" data-n="del">⌫</div>
+        <div class="tecla" data-n="0">0</div>
+        <div class="tecla enter" id="btn-enter" data-n="enter">Registrar</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="overlay-card" id="overlay-card">
+    <div class="res-emoji" id="res-emoji"></div>
+    <div class="res-nombre" id="res-nombre"></div>
+    <div class="res-badge" id="res-badge"></div>
+    <div class="res-hora" id="res-hora"></div>
+    <div class="res-sub" id="res-sub"></div>
+    <div class="barra-wrap"><div class="barra-fill" id="barra-fill"></div></div>
+  </div>
+</div>
+
+<div id="admin-overlay">
+  <div class="admin-card">
+    <div class="admin-title">⚙️ Configuración</div>
+    <div class="admin-field">
+      <label>Contraseña admin</label>
+      <input type="password" id="admin-pass" placeholder="••••••••"/>
+    </div>
+    <div class="admin-field">
+      <label>Sucursal de esta tablet</label>
+      <select id="admin-sucursal">
+        <option value="">— Seleccionar —</option>
+        <option>Centro</option><option>Naco</option><option>Bella Vista</option>
+        <option>Piantini</option><option>Los Prados</option><option>Zona Oriental</option>
+      </select>
+    </div>
+    <div class="admin-field">
+      <label>URL del servidor</label>
+      <input type="url" id="admin-url" placeholder="https://kerapodo-ponche.onrender.com"/>
+    </div>
+    <button class="admin-btn" onclick="guardarConfig()">Guardar</button>
+    <div class="admin-msg" id="admin-msg"></div>
+    <div class="admin-close" onclick="cerrarAdmin()">Cancelar</div>
+  </div>
+</div>
+
+<div id="admin-trigger" onclick="tapAdmin()"></div>
+
+<script>
+let CONFIG={servidor:localStorage.getItem('kp_servidor')||'',sucursal:localStorage.getItem('kp_sucursal')||'',adminKey:localStorage.getItem('kp_adminKey')||''};
+function actualizarUI(){document.getElementById('sucursal-pill').textContent=CONFIG.sucursal||'Sin configurar'}
+actualizarUI();
+const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function tick(){const n=new Date();document.getElementById('reloj-hora').textContent=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;document.getElementById('reloj-fecha').textContent=`${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`}
+tick();setInterval(tick,10000);
+let pin='',procesando=false;
+function actualizarDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pin.length))}
+function presionar(n){
+  if(procesando)return;
+  if(n==='del'){pin=pin.slice(0,-1)}
+  else if(n==='enter'){if(pin.length>=4)enviarPonche();return}
+  else{if(pin.length>=4)return;pin+=n}
+  actualizarDots();
+  if(pin.length===4)setTimeout(()=>enviarPonche(),200);
+}
+document.addEventListener('keydown',e=>{if(e.key>='0'&&e.key<='9')presionar(e.key);else if(e.key==='Backspace')presionar('del');else if(e.key==='Enter')presionar('enter')});
+document.getElementById('teclado').addEventListener('click',e=>{const t=e.target.closest('.tecla');if(!t)return;t.classList.add('press');setTimeout(()=>t.classList.remove('press'),120);presionar(t.dataset.n)});
+function resetPIN(){pin='';procesando=false;actualizarDots();const b=document.getElementById('btn-enter');b.textContent='Registrar';b.classList.remove('loading')}
+async function enviarPonche(){
+  if(procesando||pin.length<4)return;
+  if(!CONFIG.servidor){mostrarResultado('⚙️','Sin configurar','Toca 5 veces la esquina inferior derecha','error',3,'');resetPIN();return}
+  procesando=true;
+  const btn=document.getElementById('btn-enter');btn.textContent='...';btn.classList.add('loading');
+  try{
+    const r=await fetch(`${CONFIG.servidor}/ponche`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({pin,sucursal:CONFIG.sucursal})});
+    const d=await r.json();
+    const ahora=new Date();
+    const hora=`${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
+    if(d.ok){mostrarResultado(d.accion==='entrada'?'👋':'✅',d.nombre,d.accion==='entrada'?'ENTRADA REGISTRADA':'SALIDA REGISTRADA',d.accion,4,hora)}
+    else{mostrarResultado('❌','PIN incorrecto',d.error||'Intenta de nuevo','error',3,'')}
+  }catch(e){mostrarResultado('📡','Sin conexión','Verifica el WiFi e intenta de nuevo','error',3,'')}
+  resetPIN();
+}
+let overlayTimer=null;
+function mostrarResultado(emoji,nombre,badge,tipo,seg,hora){
+  document.getElementById('res-emoji').textContent=emoji;
+  document.getElementById('res-nombre').textContent=nombre;
+  const b=document.getElementById('res-badge');b.textContent=badge;b.className=`res-badge ${tipo}`;
+  document.getElementById('res-hora').textContent=hora;
+  document.getElementById('res-sub').textContent=hora?CONFIG.sucursal:'';
+  const oc=document.getElementById('overlay-card');oc.className=`overlay-card ${tipo}`;
+  const bf=document.getElementById('barra-fill');bf.className=`barra-fill ${tipo}`;
+  bf.style.setProperty('--dur',`${seg}s`);bf.style.animation='none';bf.offsetHeight;bf.style.animation='';
+  const ov=document.getElementById('overlay');ov.classList.add('show');
+  if(overlayTimer)clearTimeout(overlayTimer);
+  overlayTimer=setTimeout(()=>ov.classList.remove('show'),seg*1000);
+}
+document.getElementById('overlay').addEventListener('click',()=>{document.getElementById('overlay').classList.remove('show');if(overlayTimer)clearTimeout(overlayTimer)});
+let tapCount=0,tapTimer=null;
+function tapAdmin(){tapCount++;if(tapTimer)clearTimeout(tapTimer);if(tapCount>=5){tapCount=0;abrirAdmin()}else tapTimer=setTimeout(()=>tapCount=0,2000)}
+function abrirAdmin(){document.getElementById('admin-pass').value='';document.getElementById('admin-sucursal').value=CONFIG.sucursal||'';document.getElementById('admin-url').value=CONFIG.servidor||'';document.getElementById('admin-msg').textContent='';document.getElementById('admin-overlay').classList.add('show');setTimeout(()=>document.getElementById('admin-pass').focus(),200)}
+function cerrarAdmin(){document.getElementById('admin-overlay').classList.remove('show')}
+function guardarConfig(){
+  const pass=document.getElementById('admin-pass').value.trim();
+  const suc=document.getElementById('admin-sucursal').value;
+  const url=document.getElementById('admin-url').value.trim();
+  const msg=document.getElementById('admin-msg');
+  if(!pass){msg.textContent='Ingresa la contraseña';msg.className='admin-msg err';return}
+  if(!suc){msg.textContent='Selecciona una sucursal';msg.className='admin-msg err';return}
+  if(!url){msg.textContent='Ingresa la URL del servidor';msg.className='admin-msg err';return}
+  CONFIG={servidor:url.replace(/\/$/,''),sucursal:suc,adminKey:pass};
+  localStorage.setItem('kp_servidor',CONFIG.servidor);localStorage.setItem('kp_sucursal',CONFIG.sucursal);localStorage.setItem('kp_adminKey',CONFIG.adminKey);
+  actualizarUI();msg.textContent='✓ Guardado correctamente';msg.className='admin-msg';
+  setTimeout(cerrarAdmin,1500);
+}
+</script>
+</body>
+</html>
