@@ -627,46 +627,47 @@ async function adminLogin(){
   const pass=document.getElementById('admin-login-pass').value.trim();
   const err=document.getElementById('admin-login-err');
   if(!pass){err.textContent='Ingresa la contraseña';return;}
+  err.textContent='Verificando...';
 
-  // Primero intentar con el servidor (funciona en cualquier dispositivo)
-  const servidorURL = CONFIG.servidor || document.getElementById('cfg-url')?.value?.trim() || '';
-  
-  if(servidorURL){
-    try{
-      err.textContent='Verificando...';
-      const r = await fetch(`${servidorURL}/admin/verificar`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({key:pass})
-      });
-      const d = await r.json();
-      if(d.ok){
-        // Guardar config en localStorage automáticamente
-        CONFIG.adminKey = pass;
-        CONFIG.servidor = servidorURL;
-        localStorage.setItem('kp_adminKey', pass);
-        localStorage.setItem('kp_servidor', servidorURL);
-        adminAutenticado=true;
-        err.textContent='';
-        document.getElementById('admin-login-wrap').style.display='none';
-        document.getElementById('admin-panel-wrap').style.display='flex';
-        adminTab('reporte');
-        return;
-      }
-    }catch(e){/* sin servidor, continuar con localStorage */}
-  }
+  // Detectar URL del servidor automáticamente desde window.location
+  const autoURL = window.location.origin; // ej: https://kerapodo-ponche.onrender.com
 
-  // Fallback: verificar contra localStorage
-  if(pass===CONFIG.adminKey && CONFIG.adminKey){
-    adminAutenticado=true;
-    err.textContent='';
-    document.getElementById('admin-login-wrap').style.display='none';
-    document.getElementById('admin-panel-wrap').style.display='flex';
-    adminTab('reporte');
-  }else{
-    err.textContent='Contraseña incorrecta';
-    document.getElementById('admin-login-pass').value='';
-    setTimeout(()=>err.textContent='',2000);
+  try{
+    const r = await fetch(`${autoURL}/admin/verificar`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:pass})
+    });
+    const d = await r.json();
+    if(d.ok){
+      CONFIG.adminKey = pass;
+      CONFIG.servidor = CONFIG.servidor || autoURL;
+      localStorage.setItem('kp_adminKey', pass);
+      if(!localStorage.getItem('kp_servidor')) localStorage.setItem('kp_servidor', autoURL);
+      adminAutenticado=true;
+      err.textContent='';
+      document.getElementById('admin-login-wrap').style.display='none';
+      document.getElementById('admin-panel-wrap').style.display='flex';
+      adminTab('reporte');
+      return;
+    } else {
+      err.textContent='Contraseña incorrecta';
+      document.getElementById('admin-login-pass').value='';
+      setTimeout(()=>err.textContent='',2000);
+    }
+  }catch(e){
+    // Fallback localStorage
+    if(pass===CONFIG.adminKey && CONFIG.adminKey){
+      adminAutenticado=true;
+      err.textContent='';
+      document.getElementById('admin-login-wrap').style.display='none';
+      document.getElementById('admin-panel-wrap').style.display='flex';
+      adminTab('reporte');
+    }else{
+      err.textContent='Contraseña incorrecta';
+      document.getElementById('admin-login-pass').value='';
+      setTimeout(()=>err.textContent='',2000);
+    }
   }
 }
 
