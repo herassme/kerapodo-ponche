@@ -261,6 +261,7 @@ app.get('/', async (req,res) => {
 
 // Servir kiosko HTML
 app.get('/kiosko', (req,res) => res.sendFile(__dirname + '/kiosko.html'));
+app.get('/reporte', (req,res) => res.sendFile(__dirname + '/reporte.html'));
 
 // ── ESTADO DEL EMPLEADO (para que el kiosko sepa qué botón mostrar) ───────────
 app.post('/estado', async (req,res) => {
