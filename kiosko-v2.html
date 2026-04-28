@@ -24,7 +24,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .bg-deco::after{content:'';position:absolute;bottom:-80px;left:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(26,39,68,.08) 0%,transparent 70%)}
 .bg-line{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--navy),var(--gold),var(--navy))}
 #app{position:relative;z-index:1;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
-
+ 
 /* CARD */
 .card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);width:100%;max-width:380px;overflow:hidden;animation:slideUp .5s cubic-bezier(.34,1.4,.64,1)}
 @keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -51,7 +51,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .tecla.enter{grid-column:span 3;aspect-ratio:auto;padding:14px;background:var(--navy);border-color:var(--navy);color:var(--white);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(26,39,68,.25)}
 .tecla.enter:active{background:var(--navy2);transform:scale(.97)}
 .tecla.enter.loading{background:var(--bg2);border-color:var(--bg2);color:var(--muted);cursor:not-allowed;transform:none;box-shadow:none}
-
+ 
 /* CAMARA OVERLAY */
 #cam-overlay{position:fixed;inset:0;z-index:150;background:rgba(26,39,68,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
 #cam-overlay.show{display:flex}
@@ -69,7 +69,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .cam-status.ok{color:var(--green)}
 .cam-status.fail{color:var(--red)}
 .cam-cancel{font-size:12px;color:rgba(255,255,255,.4);cursor:pointer;text-decoration:underline;margin-top:4px}
-
+ 
 /* REGISTRO FACIAL (admin) */
 #reg-overlay{position:fixed;inset:0;z-index:160;background:rgba(26,39,68,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px}
 #reg-overlay.show{display:flex}
@@ -86,7 +86,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .reg-msg.ok{color:var(--green)}
 .reg-msg.err{color:var(--red)}
 .reg-cancel{font-size:12px;color:rgba(255,255,255,.3);cursor:pointer;text-decoration:underline}
-
+ 
 /* RESULTADO */
 #overlay{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;text-align:center;opacity:0;pointer-events:none;transition:opacity .3s ease;background:var(--bg)}
 #overlay.show{opacity:1;pointer-events:all}
@@ -109,7 +109,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .barra-fill.salida{background:var(--gold)}
 .barra-fill.error{background:var(--red)}
 @keyframes shrink{to{transform:scaleX(0)}}
-
+ 
 /* ADMIN */
 #admin-overlay{position:fixed;inset:0;z-index:200;background:rgba(26,39,68,.95);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px}
 #admin-overlay.show{display:flex}
@@ -126,13 +126,13 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .admin-msg.err{color:var(--red)}
 .admin-close{text-align:center;font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline}
 .admin-divider{border:none;border-top:1px solid #e8e0d4;margin:2px 0}
-
+ 
 #admin-trigger{position:fixed;bottom:0;right:0;width:70px;height:70px;opacity:0;z-index:50;cursor:default}
 </style>
 </head>
 <body>
 <div class="bg-deco"><div class="bg-line"></div></div>
-
+ 
 <!-- APP PRINCIPAL -->
 <div id="app">
   <div class="card">
@@ -161,7 +161,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
     </div>
   </div>
 </div>
-
+ 
 <!-- CÁMARA VERIFICACIÓN -->
 <div id="cam-overlay">
   <div class="cam-titulo" id="cam-titulo">Verificando identidad</div>
@@ -174,7 +174,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   <div class="cam-status" id="cam-status">Cargando modelos...</div>
   <div class="cam-cancel" onclick="cancelarCamara()">Cancelar</div>
 </div>
-
+ 
 <!-- REGISTRO FACIAL -->
 <div id="reg-overlay">
   <div class="reg-titulo">Registrar Rostro</div>
@@ -189,7 +189,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   <div class="reg-msg" id="reg-msg"></div>
   <div class="reg-cancel" onclick="cerrarRegistro()">Cancelar</div>
 </div>
-
+ 
 <!-- RESULTADO -->
 <div id="overlay">
   <div class="overlay-card" id="overlay-card">
@@ -201,7 +201,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
     <div class="barra-wrap"><div class="barra-fill" id="barra-fill"></div></div>
   </div>
 </div>
-
+ 
 <!-- ADMIN -->
 <div id="admin-overlay">
   <div class="admin-card">
@@ -235,9 +235,9 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
     <div class="admin-close" onclick="cerrarAdmin()">Cerrar</div>
   </div>
 </div>
-
+ 
 <div id="admin-trigger" onclick="tapAdmin()"></div>
-
+ 
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
 // CONFIG
@@ -255,15 +255,15 @@ Object.keys(descriptoresFaciales).forEach(k => {
     descriptoresFaciales[k] = new Float32Array(Object.values(descriptoresFaciales[k]));
   }
 });
-
+ 
 let modelsLoaded = false;
 let empleadosLista = []; // lista de empleados con pin y nombre
-
+ 
 function actualizarUI() {
   document.getElementById('sucursal-pill').textContent = CONFIG.sucursal || 'Sin configurar';
 }
 actualizarUI();
-
+ 
 // ── RELOJ ─────────────────────────────────────────────────────────────────────
 const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -273,10 +273,10 @@ function tick(){
   document.getElementById('reloj-fecha').textContent=`${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`;
 }
 tick(); setInterval(tick,10000);
-
+ 
 // ── CARGAR MODELOS FACE-API ───────────────────────────────────────────────────
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-
+ 
 async function cargarModelos() {
   if (modelsLoaded) return true;
   try {
@@ -295,14 +295,14 @@ async function cargarModelos() {
 }
 // Pre-cargar modelos en segundo plano
 setTimeout(cargarModelos, 2000);
-
+ 
 // ── PIN LOGIC ─────────────────────────────────────────────────────────────────
 let pin = '', procesando = false;
-
+ 
 function actualizarDots() {
   document.querySelectorAll('.pin-dot').forEach((d,i) => d.classList.toggle('filled', i < pin.length));
 }
-
+ 
 function presionar(n) {
   if (procesando) return;
   if (n==='del') { pin=pin.slice(0,-1); }
@@ -311,26 +311,26 @@ function presionar(n) {
   actualizarDots();
   if (pin.length===4) setTimeout(()=>iniciarPonche(),200);
 }
-
+ 
 document.addEventListener('keydown', e => {
   if (e.key>='0'&&e.key<='9') presionar(e.key);
   else if (e.key==='Backspace') presionar('del');
   else if (e.key==='Enter') presionar('enter');
 });
-
+ 
 document.getElementById('teclado').addEventListener('click', e => {
   const t = e.target.closest('.tecla');
   if (!t) return;
   t.classList.add('press'); setTimeout(()=>t.classList.remove('press'),120);
   presionar(t.dataset.n);
 });
-
+ 
 function resetPIN() {
   pin=''; procesando=false; actualizarDots();
   const b=document.getElementById('btn-enter');
   b.textContent='Registrar'; b.classList.remove('loading');
 }
-
+ 
 // ── FLUJO PRINCIPAL ───────────────────────────────────────────────────────────
 async function iniciarPonche() {
   if (procesando||pin.length<4) return;
@@ -338,14 +338,14 @@ async function iniciarPonche() {
     mostrarResultado('⚙️','Sin configurar','Configura el sistema primero','error',3,'');
     resetPIN(); return;
   }
-
+ 
   procesando = true;
   const btn = document.getElementById('btn-enter');
   btn.textContent='...'; btn.classList.add('loading');
-
+ 
   // Verificar si el empleado tiene descriptor facial registrado
   const tieneRostro = descriptoresFaciales[pin] !== undefined;
-
+ 
   if (tieneRostro) {
     // Verificar cara primero
     const pinGuardado = pin;
@@ -361,11 +361,11 @@ async function iniciarPonche() {
     await enviarPonche(pinGuardado);
   }
 }
-
+ 
 // ── VERIFICACIÓN FACIAL ───────────────────────────────────────────────────────
 let streamActivo = null;
 let pinPendiente = null;
-
+ 
 async function verificarRostro(pinEmp) {
   return new Promise(async (resolve) => {
     pinPendiente = { pin: pinEmp, resolve };
@@ -373,39 +373,39 @@ async function verificarRostro(pinEmp) {
     const status  = document.getElementById('cam-status');
     const ring    = document.getElementById('cam-ring');
     const titulo  = document.getElementById('cam-titulo');
-
+ 
     // Buscar nombre del empleado
     const emp = empleadosLista.find(e => e.pin === pinEmp);
     titulo.textContent = emp ? `Hola, ${emp.nombre.split(' ')[0]}` : 'Verificando identidad';
-
+ 
     overlay.classList.add('show');
     status.textContent = 'Activando cámara...';
     status.className = 'cam-status';
     ring.className = 'cam-ring';
-
+ 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
       streamActivo = stream;
       const video = document.getElementById('cam-video');
       video.srcObject = stream;
       await new Promise(r => video.onloadedmetadata = r);
-
+ 
       if (!modelsLoaded) {
         status.textContent = 'Cargando modelos IA...';
         await cargarModelos();
       }
-
+ 
       status.textContent = 'Mirá directo a la cámara 👁️';
       ring.className = 'cam-ring scanning';
-
+ 
       // Intentar detectar y comparar por 8 segundos
       const descriptor = descriptoresFaciales[pinEmp];
       const labeledDescriptor = new faceapi.LabeledFaceDescriptors(pinEmp, [descriptor]);
       const matcher = new faceapi.FaceMatcher([labeledDescriptor], 0.5);
-
+ 
       let intentos = 0;
       const maxIntentos = 16;
-
+ 
       const intervalo = setInterval(async () => {
         intentos++;
         try {
@@ -413,7 +413,7 @@ async function verificarRostro(pinEmp) {
             .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
             .withFaceLandmarks(true)
             .withFaceDescriptor();
-
+ 
           if (deteccion) {
             const resultado = matcher.findBestMatch(deteccion.descriptor);
             if (resultado.label === pinEmp) {
@@ -433,7 +433,7 @@ async function verificarRostro(pinEmp) {
             status.textContent = intentos < 8 ? 'Buscando tu rostro...' : 'Acerca más el teléfono 📱';
           }
         } catch(e) { /* continuar */ }
-
+ 
         if (intentos >= maxIntentos) {
           clearInterval(intervalo);
           ring.className = 'cam-ring fail';
@@ -446,7 +446,7 @@ async function verificarRostro(pinEmp) {
           }, 1500);
         }
       }, 500);
-
+ 
     } catch(e) {
       status.textContent = 'Error con la cámara';
       status.className = 'cam-status fail';
@@ -454,18 +454,18 @@ async function verificarRostro(pinEmp) {
     }
   });
 }
-
+ 
 function cancelarCamara() {
   detenerStream();
   document.getElementById('cam-overlay').classList.remove('show');
   if (pinPendiente) { pinPendiente.resolve(false); pinPendiente = null; }
   procesando = false;
 }
-
+ 
 function detenerStream() {
   if (streamActivo) { streamActivo.getTracks().forEach(t=>t.stop()); streamActivo = null; }
 }
-
+ 
 // ── ENVIAR PONCHE AL SERVIDOR ─────────────────────────────────────────────────
 async function enviarPonche(pinEmp) {
   try {
@@ -487,7 +487,7 @@ async function enviarPonche(pinEmp) {
   }
   procesando = false;
 }
-
+ 
 // ── OVERLAY RESULTADO ─────────────────────────────────────────────────────────
 let overlayTimer = null;
 function mostrarResultado(emoji,nombre,badge,tipo,seg,hora) {
@@ -507,10 +507,10 @@ document.getElementById('overlay').addEventListener('click',()=>{
   document.getElementById('overlay').classList.remove('show');
   if(overlayTimer)clearTimeout(overlayTimer);
 });
-
+ 
 // ── REGISTRO FACIAL ───────────────────────────────────────────────────────────
 let regStream = null;
-
+ 
 async function iniciarRegistro() {
   const sel = document.getElementById('reg-select');
   const pinSel = sel.value;
@@ -520,20 +520,20 @@ async function iniciarRegistro() {
     msg.textContent = 'Selecciona un empleado primero';
     msg.className = 'admin-msg err'; return;
   }
-
+ 
   cerrarAdmin();
   const overlay = document.getElementById('reg-overlay');
   document.getElementById('reg-nombre').textContent = nombre;
   document.getElementById('reg-msg').textContent = '';
   document.getElementById('reg-msg').className = 'reg-msg';
   overlay.classList.add('show');
-
+ 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
     regStream = stream;
     const video = document.getElementById('reg-video');
     video.srcObject = stream;
-
+ 
     if (!modelsLoaded) {
       document.getElementById('reg-msg').textContent = 'Cargando modelos IA...';
       await cargarModelos();
@@ -546,7 +546,7 @@ async function iniciarRegistro() {
     document.getElementById('reg-msg').className = 'reg-msg err';
   }
 }
-
+ 
 async function capturarDescriptor() {
   const btn = document.getElementById('reg-btn');
   const msg = document.getElementById('reg-msg');
@@ -554,20 +554,20 @@ async function capturarDescriptor() {
   btn.disabled = true;
   msg.textContent = 'Detectando rostro...';
   msg.className = 'reg-msg';
-
+ 
   try {
     const video = document.getElementById('reg-video');
     const deteccion = await faceapi
       .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks(true)
       .withFaceDescriptor();
-
+ 
     if (!deteccion) {
       msg.textContent = 'No se detectó rostro. Intenta de nuevo.';
       msg.className = 'reg-msg err';
       btn.disabled = false; return;
     }
-
+ 
     // Guardar descriptor
     descriptoresFaciales[pinEmp] = deteccion.descriptor;
     // Convertir a objeto simple para localStorage
@@ -576,7 +576,7 @@ async function capturarDescriptor() {
     const stored = JSON.parse(localStorage.getItem('kp_descriptores')||'{}');
     stored[pinEmp] = plain;
     localStorage.setItem('kp_descriptores', JSON.stringify(stored));
-
+ 
     msg.textContent = '✅ Rostro registrado correctamente';
     msg.className = 'reg-msg ok';
     setTimeout(()=>cerrarRegistro(), 1500);
@@ -586,13 +586,13 @@ async function capturarDescriptor() {
     btn.disabled = false;
   }
 }
-
+ 
 function cerrarRegistro() {
   if (regStream) { regStream.getTracks().forEach(t=>t.stop()); regStream=null; }
   document.getElementById('reg-overlay').classList.remove('show');
   document.getElementById('reg-btn').disabled = true;
 }
-
+ 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 let tapCount=0, tapTimer=null;
 function tapAdmin(){
@@ -601,17 +601,17 @@ function tapAdmin(){
   if(tapCount>=5){tapCount=0;abrirAdmin();}
   else tapTimer=setTimeout(()=>tapCount=0,2000);
 }
-
+ 
 async function abrirAdmin() {
   document.getElementById('admin-pass').value='';
   document.getElementById('admin-sucursal').value=CONFIG.sucursal||'';
   document.getElementById('admin-url').value=CONFIG.servidor||'';
   document.getElementById('admin-msg').textContent='';
-
+ 
   // Cargar lista de empleados para el select de registro
   const sel = document.getElementById('reg-select');
   sel.innerHTML = '<option value="">— Seleccionar empleado —</option>';
-
+ 
   if (CONFIG.servidor && CONFIG.adminKey) {
     try {
       const r = await fetch(`${CONFIG.servidor}/admin/empleados`, {headers:{'x-admin-key':CONFIG.adminKey}});
@@ -625,15 +625,15 @@ async function abrirAdmin() {
       });
     } catch(e) { /* sin servidor */ }
   }
-
+ 
   document.getElementById('admin-overlay').classList.add('show');
   setTimeout(()=>document.getElementById('admin-pass').focus(),200);
 }
-
+ 
 function cerrarAdmin() {
   document.getElementById('admin-overlay').classList.remove('show');
 }
-
+ 
 function guardarConfig() {
   const pass=document.getElementById('admin-pass').value.trim();
   const suc=document.getElementById('admin-sucursal').value;
