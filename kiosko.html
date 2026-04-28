@@ -797,6 +797,56 @@ function abrirEliminar(pin,nombre){
     </div>`;
 }
 
+async function reregistrarRostro(pin, nombre){
+  // Borrar descriptor existente
+  delete descriptoresFaciales[pin];
+  const stored = JSON.parse(localStorage.getItem('kp_descriptores')||'{}');
+  delete stored[pin];
+  localStorage.setItem('kp_descriptores', JSON.stringify(stored));
+
+  // Cerrar panel admin temporalmente y abrir registro facial
+  document.getElementById('admin-overlay').classList.remove('show');
+
+  await new Promise(resolve => {
+    regPinEmp = pin;
+    regResolve = resolve;
+    document.getElementById('reg-emp-nombre').textContent = nombre;
+    document.getElementById('reg-admin-pass').value = CONFIG.adminKey; // ya está autenticado
+    document.getElementById('reg-pass-msg').textContent = '';
+    // Saltar directo a la cámara sin pedir contraseña de nuevo
+    document.getElementById('reg-paso-pass').style.display = 'none';
+    document.getElementById('reg-paso-camara').style.display = 'flex';
+    document.getElementById('reg-nombre').textContent = nombre;
+    document.getElementById('reg-msg').textContent = '';
+    document.getElementById('reg-btn').disabled = true;
+    document.getElementById('reg-btn').dataset.pin = pin;
+    document.getElementById('reg-overlay').classList.add('show');
+
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false}).then(stream => {
+      regStream = stream;
+      const video = document.getElementById('reg-video');
+      video.srcObject = stream;
+      if(!modelsLoaded){
+        document.getElementById('reg-msg').textContent = 'Cargando modelos...';
+        cargarModelos().then(() => {
+          document.getElementById('reg-msg').textContent = 'Coloca tu cara en el círculo y presiona Capturar.';
+          document.getElementById('reg-btn').disabled = false;
+        });
+      } else {
+        document.getElementById('reg-msg').textContent = 'Coloca tu cara en el círculo y presiona Capturar.';
+        document.getElementById('reg-btn').disabled = false;
+      }
+    }).catch(() => {
+      document.getElementById('reg-msg').textContent = 'Error con la cámara';
+      document.getElementById('reg-msg').className = 'reg-msg err';
+    });
+  });
+
+  // Al terminar, volver al panel admin
+  document.getElementById('admin-overlay').classList.add('show');
+  toast('✅ Rostro actualizado', 'ok');
+}
+
 async function confirmarEliminar(){
   try{
     const r=await fetch(`${CONFIG.servidor}/admin/pin/${eliminandoPin.pin}`,{method:'DELETE',headers:{'x-admin-key':CONFIG.adminKey}});
