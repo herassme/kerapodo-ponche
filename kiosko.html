@@ -208,6 +208,19 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 <body>
 <div class="bg-deco"><div class="bg-line"></div></div>
 
+<!-- ═══ PANTALLA DISPOSITIVO NO AUTORIZADO ═══ -->
+<div id="auth-screen" style="display:none;position:fixed;inset:0;z-index:500;background:var(--navy);flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;text-align:center">
+  <div style="font-size:56px">🔒</div>
+  <div style="font-family:var(--font-head);font-size:26px;color:#fff">Dispositivo no autorizado</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.5);max-width:280px">Este dispositivo no tiene acceso al sistema. El administrador debe autorizarlo.</div>
+  <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;margin-top:8px">
+    <input type="password" id="auth-pass" class="admin-input" placeholder="Contraseña admin" onkeydown="if(event.key==='Enter')autorizarDispositivo()"/>
+    <button class="admin-login-btn" onclick="autorizarDispositivo()">Autorizar este dispositivo</button>
+  </div>
+  <div style="font-size:12px;color:var(--red);min-height:16px" id="auth-err"></div>
+  <div style="font-size:11px;color:rgba(255,255,255,.2);margin-top:16px" id="auth-device-id"></div>
+</div>
+
 <!-- ═══ KIOSKO PRINCIPAL ═══ -->
 <div id="app">
   <div class="card">
@@ -317,6 +330,68 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 <div class="toast" id="toast"></div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════
+// AUTORIZACIÓN DE DISPOSITIVO
+// ══════════════════════════════════════════════════════════════════
+function generarDeviceId(){
+  let id = localStorage.getItem('kp_device_id');
+  if(!id){
+    id = 'dev_' + Math.random().toString(36).substr(2,9) + '_' + Date.now().toString(36);
+    localStorage.setItem('kp_device_id', id);
+  }
+  return id;
+}
+
+function estaAutorizado(){
+  return localStorage.getItem('kp_device_auth') === '1';
+}
+
+async function autorizarDispositivo(){
+  const pass = document.getElementById('auth-pass').value.trim();
+  const err  = document.getElementById('auth-err');
+  if(!pass){ err.textContent='Ingresa la contraseña'; return; }
+  err.textContent='Verificando...';
+
+  const autoURL = window.location.origin;
+  try{
+    const r = await fetch(`${autoURL}/admin/verificar`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:pass})
+    });
+    const d = await r.json();
+    if(d.ok){
+      localStorage.setItem('kp_device_auth','1');
+      localStorage.setItem('kp_adminKey', pass);
+      if(!localStorage.getItem('kp_servidor')) localStorage.setItem('kp_servidor', autoURL);
+      CONFIG.adminKey = pass;
+      CONFIG.servidor = CONFIG.servidor || autoURL;
+      document.getElementById('auth-screen').style.display='none';
+      document.getElementById('app').style.display='flex';
+      err.textContent='';
+    } else {
+      err.textContent='Contraseña incorrecta';
+      document.getElementById('auth-pass').value='';
+      setTimeout(()=>err.textContent='',2000);
+    }
+  }catch(e){
+    err.textContent='Error de conexión';
+    setTimeout(()=>err.textContent='',2000);
+  }
+}
+
+function verificarAutorizacion(){
+  if(!estaAutorizado()){
+    // Mostrar pantalla de autorización
+    document.getElementById('app').style.display='none';
+    const screen = document.getElementById('auth-screen');
+    screen.style.display='flex';
+    const devId = generarDeviceId();
+    document.getElementById('auth-device-id').textContent = `ID: ${devId}`;
+    setTimeout(()=>document.getElementById('auth-pass').focus(),300);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════════
@@ -910,7 +985,10 @@ function renderTabConfig(){
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)">
       <div style="font-size:11px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Accesos directos</div>
       <a href="${CONFIG.servidor}/reporte" target="_blank" style="display:block;background:rgba(255,255,255,.06);border-radius:var(--radius);padding:12px;color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;margin-bottom:8px">📊 Abrir reporte en nueva pestaña</a>
-      <a href="${CONFIG.servidor}/admin-panel" target="_blank" style="display:block;background:rgba(255,255,255,.06);border-radius:var(--radius);padding:12px;color:rgba(255,255,255,.7);text-decoration:none;font-size:13px">👥 Panel de empleados completo</a>
+    </div>
+    <div style="margin-top:12px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)">
+      <div style="font-size:11px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Seguridad</div>
+      <button onclick="revocarDispositivo()" style="width:100%;background:rgba(240,93,93,.15);color:var(--red);border:1px solid rgba(240,93,93,.3);border-radius:var(--radius);padding:12px;font-family:var(--font-body);font-size:12px;font-weight:600;cursor:pointer">🔒 Revocar autorización de este dispositivo</button>
     </div>`;
 }
 
@@ -924,6 +1002,22 @@ function guardarConfig(){
   localStorage.setItem('kp_sucursal',suc);
   localStorage.setItem('kp_adminKey',key);
   toast('✅ Configuración guardada','ok');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INICIO — verificar autorización del dispositivo
+// ══════════════════════════════════════════════════════════════════
+window.addEventListener('load', ()=>{
+  verificarAutorizacion();
+});
+
+function revocarDispositivo(){
+  if(confirm('¿Seguro que quieres revocar la autorización de este dispositivo? Necesitarás la contraseña admin para volver a usarlo.')){
+    localStorage.removeItem('kp_device_auth');
+    cerrarAdmin();
+    verificarAutorizacion();
+    toast('Dispositivo revocado','err');
+  }
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────
