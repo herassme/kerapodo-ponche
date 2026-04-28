@@ -183,12 +183,14 @@ async function getEstadoEmpleado(odoo_id) {
   );
 
   // Sin registros hoy → siempre es primera entrada (sin importar la hora)
-  if (!registros || registros.length === 0) return { estado: 'sin_entrada', registros: [] };
+  // Proteger contra null y filtrar registros mal formados
+  const regsValidos = Array.isArray(registros) ? registros.filter(r => r && r.check_in !== undefined) : [];
+  if (regsValidos.length === 0) return { estado: 'sin_entrada', registros: [] };
 
-  const ultimo = registros[registros.length - 1];
-  const totalRegistros = registros.length;
+  const ultimo = regsValidos[regsValidos.length - 1];
+  const totalRegistros = regsValidos.length;
   const horaActual = horaAMinutos(ahoraRD());
-  const corteAlmuerzo = horaAMinutos('16:00'); // 3:00pm — después de esto no hay salida a almorzar
+  const corteAlmuerzo = horaAMinutos('16:00');
 
   if (!ultimo.check_out) {
     // Tiene registro abierto → está dentro
