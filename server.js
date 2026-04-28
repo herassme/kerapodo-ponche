@@ -215,4 +215,5 @@ async function arrancar() {
     console.log(`🔗 PINs desde: ${PINES_URL}\n`);
   });
 }
+app.get('/kiosko', (req, res) => res.sendFile(path.join(__dirname, 'kiosko.html')));
 arrancar();
