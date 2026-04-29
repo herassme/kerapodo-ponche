@@ -3,932 +3,1780 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>Kerapodo — Asistencia</title>
+<title>Kerapodo — Control de Asistencia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
-:root{
-  --bg:#f5f0e8;--bg2:#ede7d9;--navy:#1a2744;--navy2:#243258;
-  --gold:#c9923a;--gold2:#e0a84a;--gold-pale:#f5e6cc;
-  --white:#fff;--text:#1a2744;--muted:#7a8099;--border:#e0d8cc;
-  --green:#2d9e6b;--green-bg:#e8f7f0;
-  --red:#d94f4f;--red-bg:#fdeaea;
-  --orange:#e07820;--orange-bg:#fef0e0;
-  --blue:#2d6be0;--blue-bg:#e0eaff;
-  --radius:14px;--radius-sm:12px;
-  --shadow-lg:0 20px 60px rgba(26,39,68,.18);
-  --font-head:'Playfair Display',serif;--font-body:'Plus Jakarta Sans',sans-serif;
+:root {
+  --blue:       #1a4f8a;
+  --blue-dark:  #133d6e;
+  --blue-light: #2563aa;
+  --blue-pale:  #e8f0fb;
+  --blue-mist:  #f0f5fc;
+  --white:      #ffffff;
+  --gray-50:    #f8f9fb;
+  --gray-100:   #eef0f4;
+  --gray-200:   #dde1ea;
+  --gray-400:   #9aa3b5;
+  --gray-600:   #5a6478;
+  --gray-900:   #111827;
+  --green:      #0d7a55;
+  --green-pale: #e6f5ef;
+  --amber:      #b45309;
+  --amber-pale: #fef3e2;
+  --red:        #c0392b;
+  --red-pale:   #fdecea;
+  --sky:        #0ea5e9;
+  --sky-pale:   #e0f2fe;
+  --shadow-sm:  0 1px 3px rgba(17,24,39,.06), 0 1px 2px rgba(17,24,39,.04);
+  --shadow-md:  0 4px 12px rgba(17,24,39,.08), 0 2px 4px rgba(17,24,39,.04);
+  --shadow-lg:  0 16px 40px rgba(17,24,39,.12), 0 4px 12px rgba(17,24,39,.06);
+  --shadow-xl:  0 24px 64px rgba(17,24,39,.16), 0 8px 24px rgba(17,24,39,.08);
+  --radius-sm:  8px;
+  --radius:     12px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow:hidden;user-select:none}
-.bg-deco{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-.bg-deco::before{content:'';position:absolute;top:-120px;right:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(201,146,58,.18) 0%,transparent 70%)}
-.bg-line{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--navy),var(--gold),var(--navy))}
 
-/* KIOSKO */
-#app{position:relative;z-index:1;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
-.card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);width:100%;max-width:380px;overflow:hidden;animation:slideUp .5s cubic-bezier(.34,1.4,.64,1)}
-@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
-.card-header{background:var(--navy);padding:20px 24px 18px;text-align:center;position:relative;overflow:hidden;cursor:pointer;-webkit-user-select:none}
-.card-header::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,146,58,.12)}
-.brand-logo{font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--white);position:relative;z-index:1}
-.brand-logo span{color:var(--gold2)}
-.brand-tag{font-size:10px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:2px;position:relative;z-index:1}
-.reloj-bloque{margin-top:12px;position:relative;z-index:1}
-.reloj-hora{font-family:var(--font-head);font-size:44px;font-weight:600;color:var(--white);line-height:1}
-.reloj-seg{font-family:var(--font-head);font-size:20px;color:rgba(255,255,255,.4);vertical-align:super}
-.reloj-fecha{font-size:11px;color:rgba(255,255,255,.5);margin-top:3px}
-.hold-hint{font-size:9px;color:rgba(255,255,255,.2);margin-top:6px;letter-spacing:.1em;position:relative;z-index:1;transition:color .3s}
-.card-header.holding .hold-hint{color:rgba(201,146,58,.8)}
-.hold-bar{height:2px;background:rgba(255,255,255,.1);margin-top:6px;border-radius:2px;overflow:hidden;position:relative;z-index:1}
-.hold-bar-fill{height:100%;background:var(--gold);width:0%;border-radius:2px}
-.card-body{padding:20px 20px 18px;display:flex;flex-direction:column;align-items:center;gap:16px}
-.pin-label{font-size:12px;font-weight:500;color:var(--muted);text-align:center}
-.pin-dots{display:flex;gap:12px;align-items:center;height:16px}
-.pin-dot{width:10px;height:10px;border-radius:50%;background:var(--bg2);border:2px solid #d8d0c0;transition:all .2s cubic-bezier(.34,1.56,.64,1)}
-.pin-dot.filled{background:var(--gold);border-color:var(--gold);transform:scale(1.3);box-shadow:0 0 0 4px rgba(201,146,58,.15)}
-.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
-.tecla{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--navy);font-family:var(--font-body);font-size:20px;font-weight:600;aspect-ratio:1.2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s ease;box-shadow:0 2px 6px rgba(26,39,68,.06)}
-.tecla:active,.tecla.press{background:var(--gold-pale);border-color:var(--gold);color:var(--gold);transform:scale(.93)}
-.tecla.del{font-size:16px;color:var(--muted)}
-.tecla.del:active{color:var(--red);border-color:var(--red);background:var(--red-bg)}
-.btn-accion{grid-column:span 3;aspect-ratio:auto;padding:14px;font-family:var(--font-body);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border-radius:var(--radius-sm);border:none;cursor:pointer;transition:all .15s;box-shadow:0 4px 16px rgba(26,39,68,.2);background:var(--green);color:#fff}
-.btn-accion:active{transform:scale(.97)}
-.btn-accion.loading{background:var(--bg2);color:var(--muted);cursor:not-allowed}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--gray-50); font-family: var(--font-body); color: var(--gray-900); -webkit-tap-highlight-color: transparent; user-select: none; }
 
-/* PANTALLAS FULL */
-.full-screen{position:fixed;inset:0;z-index:300;background:var(--navy);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;text-align:center}
-.full-screen.show{display:flex}
-.fs-icon{font-size:56px}
-.fs-title{font-family:var(--font-head);font-size:26px;color:#fff}
-.fs-sub{font-size:13px;color:rgba(255,255,255,.5);max-width:280px;line-height:1.6}
-.fs-input{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:#fff;font-family:var(--font-body);font-size:15px;padding:12px 16px;border-radius:var(--radius);outline:none;width:100%;max-width:300px;text-align:center}
-.fs-input::placeholder{color:rgba(255,255,255,.3)}
-.fs-input:focus{border-color:var(--gold)}
-.fs-btn{background:var(--gold);color:#000;border:none;font-family:var(--font-body);font-size:13px;font-weight:700;padding:13px;border-radius:var(--radius);cursor:pointer;width:100%;max-width:300px}
-.fs-btn:disabled{background:rgba(255,255,255,.1);color:rgba(255,255,255,.3);cursor:not-allowed}
-.fs-err{font-size:12px;color:var(--red);min-height:16px}
-.fs-note{font-size:11px;color:rgba(255,255,255,.2)}
-.link-cancel{font-size:12px;color:rgba(255,255,255,.35);cursor:pointer;text-decoration:underline;margin-top:4px}
+/* ── LAYOUT ── */
+#app {
+  position: relative; z-index: 1;
+  width: 100vw; height: 100vh;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
 
-/* CÁMARA */
-.cam-wrap{position:relative;width:220px;height:220px}
-.cam-video{width:220px;height:220px;object-fit:cover;border-radius:50%;transform:scaleX(-1)}
-.cam-ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--gold);animation:pulseRing 1.5s ease-in-out infinite}
-@keyframes pulseRing{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.04)}}
-.cam-ring.ok{border-color:var(--green);animation:none}
-.cam-ring.fail{border-color:var(--red);animation:none}
-.cam-status{font-size:13px;font-weight:600;color:rgba(255,255,255,.8)}
-.cam-status.ok{color:var(--green)}
-.cam-status.fail{color:var(--red)}
+/* Fondo sutil con patrón */
+#app::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(26,79,138,.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 100% 100%, rgba(26,79,138,.04) 0%, transparent 60%);
+  pointer-events: none;
+}
 
-/* RESULTADO */
-#overlay{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;text-align:center;opacity:0;pointer-events:none;transition:opacity .3s;background:var(--bg)}
-#overlay.show{opacity:1;pointer-events:all}
-.overlay-card{background:var(--white);border-radius:28px;box-shadow:var(--shadow-lg);padding:32px 28px;width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:10px;animation:popIn .35s cubic-bezier(.34,1.56,.64,1)}
-@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
-.overlay-card.entrada{border-top:4px solid var(--green)}
-.overlay-card.salida_almuerzo{border-top:4px solid var(--orange)}
-.overlay-card.regreso_almuerzo{border-top:4px solid var(--blue)}
-.overlay-card.salida_final{border-top:4px solid var(--navy)}
-.overlay-card.error{border-top:4px solid var(--red)}
-.res-emoji{font-size:52px;line-height:1}
-.res-nombre{font-family:var(--font-head);font-size:22px;font-weight:700;color:var(--navy);line-height:1.2}
-.res-badge{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:5px 14px;border-radius:40px}
-.res-badge.entrada{background:var(--green-bg);color:var(--green)}
-.res-badge.salida_almuerzo{background:var(--orange-bg);color:var(--orange)}
-.res-badge.regreso_almuerzo{background:var(--blue-bg);color:var(--blue)}
-.res-badge.salida_final{background:#e8eaf6;color:var(--navy)}
-.res-badge.error{background:var(--red-bg);color:var(--red)}
-.res-hora{font-family:var(--font-head);font-size:36px;font-weight:600;color:var(--navy)}
-.res-alertas{display:flex;flex-direction:column;gap:4px;width:100%}
-.res-alerta{font-size:11px;background:var(--orange-bg);color:var(--orange);padding:6px 10px;border-radius:8px;text-align:left}
-.barra-wrap{width:100%;height:3px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:4px}
-.barra-fill{height:100%;border-radius:4px;width:100%;transform-origin:left;animation:shrink var(--dur,4s) linear forwards}
-.barra-fill.entrada,.barra-fill.regreso_almuerzo{background:var(--green)}
-.barra-fill.salida_almuerzo{background:var(--orange)}
-.barra-fill.salida_final{background:var(--navy)}
-.barra-fill.error{background:var(--red)}
-@keyframes shrink{to{transform:scaleX(0)}}
+/* ── CARD PRINCIPAL ── */
+.kiosko-card {
+  position: relative; z-index: 1;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%; max-width: 400px;
+  overflow: hidden;
+  animation: cardIn .6s var(--ease-spring) both;
+  border: 1px solid var(--gray-100);
+}
+@keyframes cardIn {
+  from { transform: translateY(24px) scale(.97); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
 
-/* PANEL ADMIN */
-#admin-overlay{position:fixed;inset:0;z-index:400;background:rgba(26,39,68,.96);backdrop-filter:blur(8px);display:none;flex-direction:column;align-items:stretch;overflow:hidden}
-#admin-overlay.show{display:flex}
-.admin-topbar{background:var(--navy);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.admin-topbar-brand{font-family:var(--font-head);font-size:20px;color:#fff}
-.admin-topbar-brand span{color:var(--gold2)}
-.admin-close-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 14px;font-family:var(--font-body);font-size:11px;font-weight:600;cursor:pointer}
-.admin-tabs{display:flex;background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.1);flex-shrink:0}
-.admin-tab{flex:1;padding:12px 8px;text-align:center;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.4);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
-.admin-tab.active{color:var(--gold2);border-bottom-color:var(--gold2)}
-.admin-content{flex:1;overflow-y:auto;padding:16px}
-.admin-login{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;height:100%;padding:32px}
-.admin-login-title{font-family:var(--font-head);font-size:24px;color:#fff}
-.admin-err{color:var(--red);font-size:12px;min-height:16px}
-.section-title{font-family:var(--font-head);font-size:18px;color:#fff;margin-bottom:14px}
-.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-.stat-box{background:rgba(255,255,255,.06);border-radius:var(--radius);padding:12px;text-align:center}
-.stat-box-num{font-family:var(--font-head);font-size:26px;color:#fff}
-.stat-box-num.r{color:var(--red)}
-.stat-box-num.o{color:var(--orange)}
-.stat-box-lbl{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
-.emp-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.emp-av{width:34px;height:34px;border-radius:50%;background:var(--navy2);color:var(--gold2);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:14px;font-weight:600;flex-shrink:0}
-.emp-info{flex:1;min-width:0}
-.emp-nom{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.emp-det{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px}
-.emp-pin-badge{background:var(--navy);color:var(--gold2);font-family:var(--font-head);font-size:13px;padding:3px 10px;border-radius:7px;letter-spacing:.1em;flex-shrink:0}
-.emp-btns{display:flex;gap:5px;flex-shrink:0}
-.btn-xs{border:none;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:600;cursor:pointer}
-.btn-xs.edit{background:rgba(201,146,58,.2);color:var(--gold2)}
-.btn-xs.facial{background:rgba(62,207,142,.15);color:var(--green)}
-.btn-xs.del{background:rgba(240,93,93,.2);color:var(--red)}
-.search-input{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.1);color:#fff;font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:var(--radius);outline:none;width:100%;margin-bottom:12px}
-.search-input::placeholder{color:rgba(255,255,255,.3)}
-.search-input:focus{border-color:var(--gold)}
-.form-dark{display:flex;flex-direction:column;gap:10px}
-.form-dark label{font-size:10px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.15em;text-transform:uppercase}
-.form-dark input{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.1);color:#fff;font-family:var(--font-body);font-size:14px;padding:10px 12px;border-radius:var(--radius);outline:none;width:100%}
-.form-dark input:focus{border-color:var(--gold)}
-.btn-gold{background:var(--gold);color:#000;border:none;font-family:var(--font-body);font-size:12px;font-weight:700;padding:12px;border-radius:var(--radius);cursor:pointer;width:100%;letter-spacing:.08em;text-transform:uppercase}
-.btn-ghost{background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);border:none;font-family:var(--font-body);font-size:12px;padding:12px;border-radius:var(--radius);cursor:pointer;width:100%}
-.rep-emp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:14px;margin-bottom:8px}
-.rep-nom{font-size:13px;font-weight:600;color:#fff;margin-bottom:8px}
-.rep-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.rep-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.05em}
-.rep-badge.ok{background:rgba(46,207,142,.15);color:var(--green)}
-.rep-badge.warn{background:rgba(224,120,32,.15);color:var(--orange)}
-.rep-badge.bad{background:rgba(240,93,93,.15);color:var(--red)}
-.rep-row{display:flex;gap:8px}
-.rep-dato{flex:1;background:rgba(255,255,255,.04);border-radius:8px;padding:8px;text-align:center}
-.rep-dato-val{font-family:var(--font-head);font-size:16px;color:#fff}
-.rep-dato-lbl{font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
-.config-field{margin-bottom:12px}
-.config-field label{font-size:10px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.15em;text-transform:uppercase;display:block;margin-bottom:5px}
-.config-field input{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.1);color:#fff;font-family:var(--font-body);font-size:14px;padding:10px 12px;border-radius:var(--radius);outline:none;width:100%}
-.config-field input:focus{border-color:var(--gold)}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 22px;border-radius:40px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
-.toast.show{opacity:1}
-.toast.ok{background:var(--green)}
-.toast.err{background:var(--red)}
+/* ── HEADER ── */
+.kiosko-header {
+  background: var(--blue);
+  padding: 24px 28px 22px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-user-select: none;
+}
+
+/* Textura sutil en el header */
+.kiosko-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 120% 80% at 110% -20%, rgba(255,255,255,.1) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 60% at -10% 110%, rgba(255,255,255,.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Logo SVG Kerapodo */
+.kerapodo-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative; z-index: 1;
+}
+.logo-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.logo-text-kera {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -.01em;
+  line-height: 1;
+}
+.logo-foot-icon {
+  width: 22px; height: 26px;
+  margin: 0 1px;
+  flex-shrink: 0;
+}
+.logo-text-odo {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -.01em;
+  line-height: 1;
+}
+.logo-tagline {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  margin-top: 3px;
+  position: relative; z-index: 1;
+}
+
+/* Reloj */
+.clock-block {
+  margin-top: 18px;
+  position: relative; z-index: 1;
+}
+.clock-time {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 400;
+  color: var(--white);
+  line-height: 1;
+  letter-spacing: -.03em;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.clock-seconds {
+  font-size: 22px;
+  color: rgba(255,255,255,.35);
+  letter-spacing: -.01em;
+  align-self: flex-end;
+  margin-bottom: 4px;
+}
+.clock-date {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  margin-top: 4px;
+  font-weight: 400;
+  letter-spacing: .02em;
+}
+
+/* Hold bar */
+.hold-hint {
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.18);
+  margin-top: 10px;
+  position: relative; z-index: 1;
+  transition: color .3s;
+}
+.kiosko-header.holding .hold-hint { color: rgba(255,255,255,.5); }
+.hold-bar {
+  height: 1px;
+  background: rgba(255,255,255,.12);
+  margin-top: 6px;
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative; z-index: 1;
+}
+.hold-bar-fill {
+  height: 100%;
+  background: rgba(255,255,255,.6);
+  width: 0%;
+  border-radius: 1px;
+}
+
+/* ── BODY ── */
+.kiosko-body {
+  padding: 24px 24px 22px;
+}
+
+.pin-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-400);
+  letter-spacing: .03em;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* PIN dots */
+.pin-dots {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.pin-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gray-200);
+  background: transparent;
+  transition: all .25s var(--ease-spring);
+}
+.pin-dot.filled {
+  background: var(--blue);
+  border-color: var(--blue);
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px rgba(26,79,138,.15);
+}
+
+/* Teclado */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.key {
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-100);
+  border-radius: var(--radius);
+  color: var(--gray-900);
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 500;
+  aspect-ratio: 1.15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .12s var(--ease-smooth);
+  position: relative;
+  overflow: hidden;
+}
+.key:active, .key.press {
+  background: var(--blue-pale);
+  border-color: var(--blue);
+  color: var(--blue);
+  transform: scale(.93);
+}
+.key.del {
+  color: var(--gray-400);
+}
+.key.del:active, .key.del.press {
+  background: var(--red-pale);
+  border-color: var(--red);
+  color: var(--red);
+}
+/* Icono SVG borrar */
+.key.del svg { width: 18px; height: 18px; }
+
+/* Botón acción */
+.btn-action {
+  grid-column: span 3;
+  aspect-ratio: auto;
+  padding: 15px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all .15s var(--ease-smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--blue);
+  color: var(--white);
+  box-shadow: 0 2px 8px rgba(26,79,138,.3), 0 1px 2px rgba(26,79,138,.2);
+}
+.btn-action:active { transform: scale(.97); }
+.btn-action.loading {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.btn-action svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ── PANTALLAS FULL ── */
+.full-screen {
+  position: fixed; inset: 0; z-index: 300;
+  background: var(--white);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+  animation: fadeIn .3s var(--ease-smooth);
+}
+.full-screen.show { display: flex; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.full-screen.dark {
+  background: var(--blue-dark);
+}
+
+/* Ícono de pantalla */
+.screen-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.screen-icon.blue   { background: var(--blue-pale); }
+.screen-icon.green  { background: var(--green-pale); }
+.screen-icon.red    { background: var(--red-pale); }
+.screen-icon svg { width: 28px; height: 28px; }
+
+.screen-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--gray-900);
+  line-height: 1.2;
+}
+.full-screen.dark .screen-title { color: var(--white); }
+
+.screen-sub {
+  font-size: 14px;
+  color: var(--gray-600);
+  max-width: 300px;
+  line-height: 1.6;
+}
+.full-screen.dark .screen-sub { color: rgba(255,255,255,.55); }
+
+.screen-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--blue);
+}
+.full-screen.dark .screen-name { color: rgba(255,255,255,.8); }
+
+/* Inputs */
+.screen-input {
+  width: 100%; max-width: 320px;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  color: var(--gray-900);
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 13px 16px;
+  outline: none;
+  transition: border-color .2s;
+  text-align: center;
+}
+.screen-input:focus { border-color: var(--blue); background: var(--white); }
+.full-screen.dark .screen-input {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.15);
+  color: var(--white);
+}
+.full-screen.dark .screen-input::placeholder { color: rgba(255,255,255,.3); }
+.full-screen.dark .screen-input:focus { border-color: rgba(255,255,255,.5); }
+
+/* Botones */
+.screen-btn {
+  width: 100%; max-width: 320px;
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px;
+  cursor: pointer;
+  letter-spacing: .02em;
+  transition: all .15s;
+  box-shadow: 0 2px 8px rgba(26,79,138,.3);
+}
+.screen-btn:hover { background: var(--blue-light); }
+.screen-btn:active { transform: scale(.98); }
+.screen-btn:disabled { background: var(--gray-100); color: var(--gray-400); box-shadow: none; cursor: not-allowed; }
+
+.screen-err {
+  font-size: 13px;
+  color: var(--red);
+  min-height: 18px;
+  font-weight: 500;
+}
+.full-screen.dark .screen-err { color: #ff8a80; }
+
+.screen-note {
+  font-size: 11px;
+  color: var(--gray-400);
+  letter-spacing: .02em;
+}
+.full-screen.dark .screen-note { color: rgba(255,255,255,.2); }
+
+.link-cancel {
+  font-size: 13px;
+  color: var(--gray-400);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color .2s;
+}
+.link-cancel:hover { color: var(--gray-600); }
+
+/* ── CÁMARA ── */
+.cam-container {
+  position: relative;
+  width: 220px; height: 220px;
+}
+.cam-video-el {
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  background: var(--gray-100);
+}
+.cam-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--blue);
+}
+.cam-ring.scanning {
+  animation: ringPulse 1.5s ease-in-out infinite;
+}
+.cam-ring.ok   { border-color: var(--green); border-width: 3px; animation: none; }
+.cam-ring.fail { border-color: var(--red);   border-width: 3px; animation: none; }
+@keyframes ringPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .5; transform: scale(1.03); }
+}
+
+/* Progress arc for scanning */
+.cam-progress {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--blue);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.cam-status {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-600);
+  text-align: center;
+}
+.full-screen.dark .cam-status { color: rgba(255,255,255,.7); }
+.cam-status.ok   { color: var(--green); }
+.cam-status.fail { color: var(--red); }
+
+/* ── RESULTADO ── */
+#overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s var(--ease-smooth);
+  background: rgba(248,249,251,.92);
+  backdrop-filter: blur(12px);
+}
+#overlay.show { opacity: 1; pointer-events: all; }
+
+.result-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: 36px 32px;
+  width: 100%; max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: resultIn .4s var(--ease-spring) both;
+  border: 1px solid var(--gray-100);
+}
+@keyframes resultIn {
+  from { transform: scale(.85) translateY(16px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Accent line top */
+.result-card.entrada         { border-top: 3px solid var(--green); }
+.result-card.salida_almuerzo { border-top: 3px solid var(--amber); }
+.result-card.regreso_almuerzo{ border-top: 3px solid var(--sky); }
+.result-card.salida_final    { border-top: 3px solid var(--blue); }
+.result-card.error           { border-top: 3px solid var(--red); }
+
+.result-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.result-icon svg { width: 24px; height: 24px; }
+.result-icon.entrada          { background: var(--green-pale); }
+.result-icon.salida_almuerzo  { background: var(--amber-pale); }
+.result-icon.regreso_almuerzo { background: var(--sky-pale); }
+.result-icon.salida_final     { background: var(--blue-pale); }
+.result-icon.error            { background: var(--red-pale); }
+
+.result-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--gray-900);
+  text-align: center;
+  line-height: 1.2;
+}
+.result-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+.result-badge.entrada          { background: var(--green-pale);  color: var(--green); }
+.result-badge.salida_almuerzo  { background: var(--amber-pale);  color: var(--amber); }
+.result-badge.regreso_almuerzo { background: var(--sky-pale);    color: var(--sky); }
+.result-badge.salida_final     { background: var(--blue-pale);   color: var(--blue); }
+.result-badge.error            { background: var(--red-pale);    color: var(--red); }
+
+.result-time {
+  font-family: var(--font-display);
+  font-size: 42px;
+  color: var(--gray-900);
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+.result-alerts { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.result-alert {
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--amber-pale);
+  color: var(--amber);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-alert svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+.progress-bar {
+  width: 100%;
+  height: 2px;
+  background: var(--gray-100);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 100%;
+  transform-origin: left;
+  animation: shrink var(--dur, 4s) linear forwards;
+}
+.progress-fill.entrada          { background: var(--green); }
+.progress-fill.salida_almuerzo  { background: var(--amber); }
+.progress-fill.regreso_almuerzo { background: var(--sky); }
+.progress-fill.salida_final     { background: var(--blue); }
+.progress-fill.error            { background: var(--red); }
+@keyframes shrink { to { transform: scaleX(0); } }
+
+/* ── PANEL ADMIN ── */
+#admin-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(17,24,39,.6);
+  backdrop-filter: blur(8px);
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  animation: fadeIn .2s var(--ease-smooth);
+}
+#admin-overlay.show { display: flex; }
+
+.admin-sheet {
+  background: var(--white);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  margin-top: auto;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: sheetIn .35s var(--ease-spring) both;
+  box-shadow: 0 -8px 40px rgba(17,24,39,.2);
+}
+@keyframes sheetIn {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.admin-login-sheet {
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.admin-sheet-handle {
+  width: 36px; height: 4px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  margin: 0 auto 8px;
+}
+.admin-login-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--gray-900);
+  text-align: center;
+}
+.admin-login-input {
+  width: 100%;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  color: var(--gray-900);
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 13px 16px;
+  outline: none;
+  transition: border-color .2s;
+  text-align: center;
+}
+.admin-login-input:focus { border-color: var(--blue); background: var(--white); }
+.admin-login-btn {
+  width: 100%;
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(26,79,138,.3);
+  transition: all .15s;
+}
+.admin-login-btn:hover { background: var(--blue-light); }
+.admin-login-err {
+  font-size: 13px;
+  color: var(--red);
+  min-height: 16px;
+  font-weight: 500;
+}
+.admin-cancel-link {
+  font-size: 13px;
+  color: var(--gray-400);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Panel autenticado */
+.admin-panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.admin-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.admin-close-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  border: none;
+  color: var(--gray-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all .15s;
+}
+.admin-close-btn:hover { background: var(--gray-200); }
+
+.admin-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--gray-100);
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+.admin-tab {
+  flex: 1;
+  padding: 11px 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+}
+.admin-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+.admin-content { flex: 1; overflow-y: auto; padding: 16px; }
+
+/* Admin content items */
+.ac-title { font-size: 13px; font-weight: 600; color: var(--gray-900); margin-bottom: 12px; }
+.ac-stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+.ac-stat { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: var(--radius); padding: 12px; text-align: center; }
+.ac-stat-num { font-family: var(--font-display); font-size: 24px; color: var(--gray-900); }
+.ac-stat-num.r { color: var(--red); }
+.ac-stat-num.a { color: var(--amber); }
+.ac-stat-lbl { font-size: 9px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+
+.ac-emp {
+  background: var(--white);
+  border: 1.5px solid var(--gray-100);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color .15s;
+}
+.ac-emp:hover { border-color: var(--gray-200); }
+.ac-av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--blue-pale);
+  color: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 13px;
+  flex-shrink: 0;
+}
+.ac-emp-info { flex: 1; min-width: 0; }
+.ac-emp-name { font-size: 12px; font-weight: 600; color: var(--gray-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-emp-detail { font-size: 10px; color: var(--gray-400); margin-top: 1px; }
+.ac-pin { background: var(--blue); color: var(--white); font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 6px; letter-spacing: .06em; flex-shrink: 0; }
+.ac-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.ac-btn {
+  border: 1.5px solid var(--gray-100);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--white);
+  color: var(--gray-600);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: all .12s;
+}
+.ac-btn svg { width: 11px; height: 11px; }
+.ac-btn:hover { border-color: var(--gray-200); background: var(--gray-50); }
+.ac-btn.facial { color: var(--green); border-color: var(--green-pale); background: var(--green-pale); }
+.ac-btn.del    { color: var(--red);   border-color: var(--red-pale);   background: var(--red-pale); }
+
+.ac-search {
+  width: 100%;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-100);
+  border-radius: var(--radius);
+  color: var(--gray-900);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  margin-bottom: 10px;
+  transition: border-color .2s;
+}
+.ac-search:focus { border-color: var(--blue); background: var(--white); }
+
+.ac-btn-primary {
+  width: 100%;
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 11px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .15s;
+  letter-spacing: .02em;
+}
+.ac-btn-primary svg { width: 14px; height: 14px; }
+.ac-btn-primary:hover { background: var(--blue-light); }
+
+.ac-btn-secondary {
+  width: 100%;
+  background: var(--gray-50);
+  color: var(--gray-600);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 11px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.ac-btn-secondary:hover { background: var(--gray-100); }
+
+.ac-btn-danger {
+  width: 100%;
+  background: var(--red-pale);
+  color: var(--red);
+  border: 1.5px solid rgba(192,57,43,.15);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 11px;
+  cursor: pointer;
+  transition: all .15s;
+  margin-top: 8px;
+}
+
+.ac-form-label { font-size: 10px; font-weight: 600; color: var(--gray-400); letter-spacing: .12em; text-transform: uppercase; display: block; margin-bottom: 5px; }
+.ac-form-input {
+  width: 100%;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  color: var(--gray-900);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  margin-bottom: 10px;
+  transition: border-color .2s;
+}
+.ac-form-input:focus { border-color: var(--blue); background: var(--white); }
+
+.ac-divider { border: none; border-top: 1px solid var(--gray-100); margin: 12px 0; }
+.ac-section-label { font-size: 10px; font-weight: 600; color: var(--gray-400); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
+.ac-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 13px;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-100);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--gray-600);
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  transition: all .15s;
+}
+.ac-link:hover { border-color: var(--gray-200); background: var(--gray-100); }
+.ac-link svg { width: 14px; height: 14px; color: var(--blue); flex-shrink: 0; }
+
+/* Reporte items */
+.rep-item { background: var(--white); border: 1.5px solid var(--gray-100); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+.rep-name { font-size: 13px; font-weight: 600; color: var(--gray-900); margin-bottom: 7px; }
+.rep-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+.rep-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: .04em; }
+.rep-badge.ok   { background: var(--green-pale); color: var(--green); }
+.rep-badge.warn { background: var(--amber-pale); color: var(--amber); }
+.rep-badge.bad  { background: var(--red-pale);   color: var(--red); }
+.rep-stats { display: flex; gap: 6px; }
+.rep-stat { flex: 1; background: var(--gray-50); border-radius: var(--radius-sm); padding: 7px; text-align: center; }
+.rep-stat-val { font-family: var(--font-display); font-size: 15px; color: var(--gray-900); }
+.rep-stat-lbl { font-size: 9px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .06em; margin-top: 1px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--gray-900); color: var(--white);
+  padding: 10px 20px; border-radius: 40px;
+  font-size: 13px; font-weight: 500;
+  z-index: 999; opacity: 0; transition: opacity .3s;
+  pointer-events: none; white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: var(--shadow-lg);
+}
+.toast.show { opacity: 1; }
+.toast.ok  { background: var(--green); }
+.toast.err { background: var(--red); }
+.toast svg { width: 14px; height: 14px; flex-shrink: 0; }
 </style>
 </head>
 <body>
-<div class="bg-deco"><div class="bg-line"></div></div>
 
 <!-- ═══ PANTALLA: DISPOSITIVO NO AUTORIZADO ═══ -->
-<div class="full-screen" id="screen-auth">
-  <div class="fs-icon">🔒</div>
-  <div class="fs-title">Dispositivo no autorizado</div>
-  <div class="fs-sub">Este dispositivo no tiene acceso al sistema. El administrador debe autorizarlo.</div>
-  <input type="url" id="auth-url" style="display:none"/>
-  <input type="password" id="auth-pass" class="fs-input" placeholder="Contraseña admin" onkeydown="if(event.key==='Enter')autorizarDispositivo()"/>
-  <button class="fs-btn" onclick="autorizarDispositivo()">Autorizar este dispositivo</button>
-  <div class="fs-err" id="auth-err"></div>
-  <div class="fs-note" id="auth-device-id"></div>
+<div class="full-screen" id="screen-auth" style="background:var(--blue-dark);justify-content:center">
+  <!-- Fondo con textura y gradientes -->
+  <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">
+    <div style="position:absolute;top:-20%;left:-10%;width:70%;height:70%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.07) 0%,transparent 70%)"></div>
+    <div style="position:absolute;bottom:-15%;right:-10%;width:50%;height:50%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04) 0%,transparent 70%)"></div>
+    <!-- Grid sutil -->
+    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:40px 40px"></div>
+  </div>
+
+  <!-- Logo arriba -->
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:5px;margin-bottom:32px">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-family:'DM Serif Display',Georgia,serif;font-style:italic;font-size:38px;font-weight:700;color:white;letter-spacing:-.02em;line-height:1">KERAPODO</span>
+      <svg viewBox="0 0 32 42" fill="none" style="height:34px;width:auto;margin-left:-2px">
+        <ellipse cx="16" cy="30" rx="10" ry="12" stroke="rgba(255,255,255,0.6)" stroke-width="1.8" fill="none"/>
+        <ellipse cx="6"  cy="12" rx="3"  ry="4"  stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
+        <ellipse cx="13" cy="7"  rx="3"  ry="3.8" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
+        <ellipse cx="21" cy="6"  rx="2.8" ry="3.5" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
+        <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
+      </svg>
+    </div>
+    <div style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.3);font-family:'DM Sans',sans-serif;font-weight:500">Cuidado de pies</div>
+  </div>
+
+  <!-- Card central flotante -->
+  <div style="position:relative;z-index:1;background:white;border-radius:20px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 24px 64px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.15);display:flex;flex-direction:column;align-items:center;gap:16px">
+    <!-- Ícono de candado -->
+    <div style="width:48px;height:48px;border-radius:50%;background:var(--blue-pale);display:flex;align-items:center;justify-content:center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--gray-900);margin-bottom:6px">Dispositivo no autorizado</div>
+      <div style="font-size:13px;color:var(--gray-400);line-height:1.6;max-width:260px">El administrador debe autorizar este dispositivo para acceder al sistema.</div>
+    </div>
+    <input type="url" id="auth-url" style="display:none"/>
+    <input type="password" id="auth-pass"
+      style="width:100%;background:var(--gray-50);border:1.5px solid var(--gray-200);color:var(--gray-900);font-family:'DM Sans',sans-serif;font-size:15px;padding:13px 16px;border-radius:12px;outline:none;text-align:center;transition:border-color .2s"
+      placeholder="Ingresa la contraseña"
+      onkeydown="if(event.key==='Enter')autorizarDispositivo()"/>
+    <button onclick="autorizarDispositivo()"
+      style="width:100%;background:var(--blue);color:white;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:14px;cursor:pointer;box-shadow:0 2px 8px rgba(26,79,138,.35);transition:all .15s">
+      Autorizar acceso
+    </button>
+    <div style="font-size:12px;color:var(--red);min-height:16px;font-weight:500;text-align:center" id="auth-err"></div>
+    <div style="font-size:10px;color:var(--gray-200);text-align:center" id="auth-device-id"></div>
+  </div>
 </div>
 
-<!-- ═══ PANTALLA: REGISTRO FACIAL (primera vez) ═══ -->
-<div class="full-screen" id="screen-registro">
-  <div class="fs-title">Registro facial requerido</div>
-  <div class="fs-sub">Tu rostro no está registrado. Es obligatorio para usar el sistema.<br/>El administrador debe autorizar este proceso.</div>
-  <div class="fs-sub" style="color:var(--gold2);font-weight:600" id="reg-emp-nombre-main"></div>
+<!-- ═══ PANTALLA: REGISTRO FACIAL ═══ -->
+<div class="full-screen dark" id="screen-registro">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,255,255,.05) 0%,transparent 60%);pointer-events:none"></div>
 
-  <!-- Paso 1: PIN del admin -->
-  <div id="reg-paso-admin" style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:300px">
-    <input type="password" id="reg-admin-pass-main" class="fs-input" placeholder="Contraseña admin" onkeydown="if(event.key==='Enter')verificarAdminReg()"/>
-    <button class="fs-btn" onclick="verificarAdminReg()">Verificar</button>
-    <div class="fs-err" id="reg-admin-err"></div>
+  <div class="screen-icon blue" style="background:rgba(255,255,255,.1);position:relative;z-index:1">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
   </div>
 
-  <!-- Paso 2: Cámara -->
-  <div id="reg-paso-camara-main" style="display:none;flex-direction:column;align-items:center;gap:14px">
-    <div class="cam-wrap">
-      <video id="reg-video-main" class="cam-video" autoplay playsinline muted></video>
-      <div class="reg-ring-main" style="position:absolute;inset:-6px;border-radius:50%;border:3px solid rgba(201,146,58,.5)"></div>
+  <div style="position:relative;z-index:1;text-align:center">
+    <div style="font-family:'DM Serif Display',serif;font-size:22px;color:white;margin-bottom:6px">Registro facial requerido</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.5);max-width:280px;line-height:1.6">Para usar el sistema es obligatorio registrar tu rostro. El administrador debe autorizar este proceso.</div>
+    <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,.85);margin-top:8px" id="reg-emp-nombre-main"></div>
+  </div>
+
+  <!-- Paso 1: contraseña admin -->
+  <div id="reg-paso-admin" style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:300px;position:relative;z-index:1">
+    <input type="password" id="reg-admin-pass-main"
+      style="width:100%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:white;font-family:'DM Sans',sans-serif;font-size:15px;padding:13px 16px;border-radius:12px;outline:none;text-align:center;transition:border-color .2s"
+      placeholder="Contraseña admin"
+      onkeydown="if(event.key==='Enter')verificarAdminReg()"/>
+    <button onclick="verificarAdminReg()"
+      style="width:100%;background:white;color:var(--blue-dark);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:14px;cursor:pointer;transition:opacity .2s">
+      Verificar y continuar
+    </button>
+    <div style="font-size:12px;color:#ff8a80;min-height:16px;font-weight:500" id="reg-admin-err"></div>
+  </div>
+
+  <!-- Paso 2: cámara -->
+  <div id="reg-paso-camara-main" style="display:none;flex-direction:column;align-items:center;gap:14px;position:relative;z-index:1">
+    <div class="cam-container">
+      <video id="reg-video-main" class="cam-video-el" autoplay playsinline muted></video>
+      <div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></div>
     </div>
-    <button class="fs-btn" id="reg-capture-btn" onclick="capturarRostroMain()" disabled>📸 Capturar mi rostro</button>
-    <div class="fs-err" id="reg-capture-err"></div>
+    <button id="reg-capture-btn" onclick="capturarRostroMain()" disabled
+      style="background:white;color:var(--blue-dark);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:13px 32px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M9 2H15L17 4H20a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3z"/></svg>
+      Capturar mi rostro
+    </button>
+    <div style="font-size:12px;color:rgba(255,255,255,.5);text-align:center;min-height:16px" id="reg-capture-err"></div>
   </div>
+
+  <div class="link-cancel" style="color:rgba(255,255,255,.3);position:relative;z-index:1" onclick="cancelarRegistro()">Cancelar</div>
 </div>
 
 <!-- ═══ KIOSKO PRINCIPAL ═══ -->
-<div id="app" style="display:none;position:relative;z-index:1;width:100vw;height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:16px">
-  <div class="card">
-    <div class="card-header" id="reloj-header">
-      <div class="brand-logo">Kera<span>podo</span></div>
-      <div class="brand-tag">Control de Asistencia</div>
-      <div class="reloj-bloque">
-        <div class="reloj-hora" id="reloj-hora">--:--<span class="reloj-seg" id="reloj-seg">00</span></div>
-        <div class="reloj-fecha" id="reloj-fecha">---</div>
+<div id="app">
+  <div class="kiosko-card">
+    <!-- Header con reloj -->
+    <div class="kiosko-header" id="reloj-header">
+      <!-- Logo Kerapodo: texto completo + huella junto a última O -->
+      <div style="display:flex;align-items:center;gap:6px;position:relative;z-index:1">
+        <span style="font-family:'DM Serif Display',Georgia,serif;font-style:italic;font-size:30px;font-weight:700;color:white;letter-spacing:-.02em;line-height:1">KERAPODO</span>
+        <svg viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg" style="height:28px;width:auto;margin-left:-2px">
+          <ellipse cx="16" cy="30" rx="10" ry="12" stroke="rgba(255,255,255,0.7)" stroke-width="1.8" fill="none"/>
+          <ellipse cx="6"  cy="12" rx="3"  ry="4"  stroke="rgba(255,255,255,0.7)" stroke-width="1.6" fill="none"/>
+          <ellipse cx="13" cy="7"  rx="3"  ry="3.8" stroke="rgba(255,255,255,0.7)" stroke-width="1.6" fill="none"/>
+          <ellipse cx="21" cy="6"  rx="2.8" ry="3.5" stroke="rgba(255,255,255,0.7)" stroke-width="1.6" fill="none"/>
+          <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.7)" stroke-width="1.6" fill="none"/>
+        </svg>
       </div>
-      <div class="hold-hint">Mantén presionado para acceso admin</div>
+      <div class="logo-tagline" style="position:relative;z-index:1">Cuidado de pies · Control de Asistencia</div>
+
+      <div class="clock-block">
+        <div class="clock-time">
+          <span id="reloj-hora">--:--</span><span class="clock-seconds" id="reloj-seg">00</span>
+        </div>
+        <div class="clock-date" id="reloj-fecha">---</div>
+      </div>
+      <div class="hold-hint">Mantener presionado para acceso administrativo</div>
       <div class="hold-bar"><div class="hold-bar-fill" id="hold-bar-fill"></div></div>
     </div>
-    <div class="card-body">
-      <div class="pin-label">Ingresa tu PIN para registrar tu asistencia</div>
+
+    <!-- Body con PIN -->
+    <div class="kiosko-body">
+      <div class="pin-label">Ingresa tu PIN para registrar asistencia</div>
       <div class="pin-dots" id="pin-dots">
         <div class="pin-dot"></div><div class="pin-dot"></div>
         <div class="pin-dot"></div><div class="pin-dot"></div>
       </div>
-      <div class="teclado" id="teclado">
-        <div class="tecla" data-n="1">1</div><div class="tecla" data-n="2">2</div><div class="tecla" data-n="3">3</div>
-        <div class="tecla" data-n="4">4</div><div class="tecla" data-n="5">5</div><div class="tecla" data-n="6">6</div>
-        <div class="tecla" data-n="7">7</div><div class="tecla" data-n="8">8</div><div class="tecla" data-n="9">9</div>
-        <div class="tecla del" data-n="del">⌫</div><div class="tecla" data-n="0">0</div>
-        <button class="btn-accion" id="btn-accion">Registrar</button>
+      <div class="keypad" id="teclado">
+        <div class="key" data-n="1">1</div>
+        <div class="key" data-n="2">2</div>
+        <div class="key" data-n="3">3</div>
+        <div class="key" data-n="4">4</div>
+        <div class="key" data-n="5">5</div>
+        <div class="key" data-n="6">6</div>
+        <div class="key" data-n="7">7</div>
+        <div class="key" data-n="8">8</div>
+        <div class="key" data-n="9">9</div>
+        <div class="key del" data-n="del">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+        </div>
+        <div class="key" data-n="0">0</div>
+        <button class="btn-action" id="btn-action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Registrar
+        </button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═══ CÁMARA VERIFICACIÓN ═══ -->
-<div class="full-screen" id="screen-cam">
-  <div class="fs-title" id="cam-titulo">Verificando identidad</div>
-  <div class="cam-wrap">
-    <video id="cam-video" class="cam-video" autoplay playsinline muted></video>
-    <div class="cam-ring" id="cam-ring"></div>
+<div class="full-screen dark" id="screen-cam">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,255,255,.05) 0%,transparent 60%);pointer-events:none"></div>
+  <div style="font-family:'DM Serif Display',serif;font-size:22px;color:white;position:relative;z-index:1" id="cam-titulo">Verificando identidad</div>
+  <div class="cam-container" style="position:relative;z-index:1">
+    <video id="cam-video" class="cam-video-el" autoplay playsinline muted></video>
+    <div class="cam-ring scanning" id="cam-ring"></div>
+    <div class="cam-progress" id="cam-progress"></div>
   </div>
-  <div class="cam-status" id="cam-status">Activando cámara...</div>
-  <div class="link-cancel" onclick="cancelarVerificacion()">Cancelar</div>
+  <div class="cam-status" style="position:relative;z-index:1" id="cam-status">Activando cámara...</div>
+  <div class="link-cancel" style="color:rgba(255,255,255,.35);position:relative;z-index:1" onclick="cancelarVerificacion()">Cancelar</div>
 </div>
 
 <!-- ═══ RESULTADO ═══ -->
 <div id="overlay">
-  <div class="overlay-card" id="overlay-card">
-    <div class="res-emoji" id="res-emoji"></div>
-    <div class="res-nombre" id="res-nombre"></div>
-    <div class="res-badge" id="res-badge"></div>
-    <div class="res-hora" id="res-hora"></div>
-    <div class="res-alertas" id="res-alertas"></div>
-    <div class="barra-wrap"><div class="barra-fill" id="barra-fill"></div></div>
+  <div class="result-card" id="result-card">
+    <div class="result-icon" id="result-icon">
+      <svg id="result-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+    </div>
+    <div class="result-name" id="result-name"></div>
+    <div class="result-badge" id="result-badge"></div>
+    <div class="result-time" id="result-time"></div>
+    <div class="result-alerts" id="result-alerts"></div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 </div>
 
 <!-- ═══ PANEL ADMIN ═══ -->
 <div id="admin-overlay">
-  <div id="admin-login-wrap" class="admin-login">
-    <div class="admin-login-title">⚙️ Acceso Admin</div>
-    <input type="password" id="admin-login-pass" class="fs-input" placeholder="Contraseña" onkeydown="if(event.key==='Enter')adminLogin()" style="max-width:300px"/>
-    <button class="fs-btn" onclick="adminLogin()" style="max-width:300px">Entrar</button>
-    <div class="admin-err" id="admin-login-err"></div>
-    <button onclick="cerrarAdmin()" style="background:transparent;border:none;color:rgba(255,255,255,.3);font-family:var(--font-body);font-size:12px;cursor:pointer;text-decoration:underline;margin-top:8px">Cancelar</button>
+  <!-- Login sheet -->
+  <div id="admin-login-sheet" class="admin-sheet" style="padding:0">
+    <div class="admin-login-sheet">
+      <div class="admin-sheet-handle"></div>
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--blue-pale);display:flex;align-items:center;justify-content:center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="admin-login-title">Acceso Administrativo</div>
+      <input type="password" id="admin-login-pass" class="admin-login-input" placeholder="Contraseña" onkeydown="if(event.key==='Enter')adminLogin()"/>
+      <button class="admin-login-btn" onclick="adminLogin()">Acceder al panel</button>
+      <div class="admin-login-err" id="admin-login-err"></div>
+      <div class="admin-cancel-link" onclick="cerrarAdmin()">Cancelar</div>
+    </div>
   </div>
-  <div id="admin-panel-wrap" style="display:none;flex-direction:column;height:100%">
-    <div class="admin-topbar">
-      <div class="admin-topbar-brand">Kera<span>podo</span> Admin</div>
-      <button class="admin-close-btn" onclick="cerrarAdmin()">✕ Cerrar</button>
+
+  <!-- Panel autenticado -->
+  <div id="admin-panel-sheet" class="admin-sheet" style="display:none;max-height:92vh">
+    <div class="admin-panel-header">
+      <div class="admin-sheet-handle" style="position:absolute;top:8px;left:50%;transform:translateX(-50%)"></div>
+      <div class="admin-panel-title" style="margin-top:8px">Panel Administrativo</div>
+      <button class="admin-close-btn" onclick="cerrarAdmin()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
     <div class="admin-tabs">
-      <div class="admin-tab active" onclick="adminTab('reporte')" id="atab-reporte">📊 Reporte</div>
-      <div class="admin-tab" onclick="adminTab('empleados')" id="atab-empleados">👥 Empleados</div>
-      <div class="admin-tab" onclick="adminTab('config')" id="atab-config">⚙️ Config</div>
+      <div class="admin-tab active" onclick="adminTab('reporte')" id="atab-reporte">Reporte</div>
+      <div class="admin-tab" onclick="adminTab('empleados')" id="atab-empleados">Empleados</div>
+      <div class="admin-tab" onclick="adminTab('config')" id="atab-config">Config</div>
     </div>
     <div class="admin-content" id="admin-content"></div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast">
+  <svg id="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+  <span id="toast-msg"></span>
+</div>
 
 <script>
 // ══ CONFIG ════════════════════════════════════════════════════════
-let CONFIG={
+let CONFIG = {
   servidor: localStorage.getItem('kp_servidor') || window.location.origin,
-  adminKey: localStorage.getItem('kp_adminKey') || '',
+  adminKey:  localStorage.getItem('kp_adminKey') || '',
 };
-let descriptoresFaciales={};
-let modelsLoaded=false;
-const MODEL_URL='https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-const ACCIONES={
-  sin_entrada:     {key:'entrada',         emoji:'🟢', label:'ENTRADA REGISTRADA',  clase:'entrada'},
-  en_trabajo:      {key:'salida_almuerzo', emoji:'🍽️', label:'SALIDA A ALMORZAR',   clase:'salida_almuerzo'},
-  en_almuerzo:     {key:'regreso_almuerzo',emoji:'🔄', label:'REGRESO DE ALMUERZO', clase:'regreso_almuerzo'},
-  regreso_almuerzo:{key:'salida_final',    emoji:'👋', label:'SALIDA REGISTRADA',   clase:'salida_final'},
-  salio:           {key:null,             emoji:'✅', label:'JORNADA COMPLETADA',  clase:'salida_final'},
+let descriptoresFaciales = {};
+let modelsLoaded = false;
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+
+const ACCIONES = {
+  sin_entrada:      { key:'entrada',          label:'Entrada registrada',   clase:'entrada',          svgPath:'<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' },
+  en_trabajo:       { key:'salida_almuerzo',  label:'Salida a almorzar',    clase:'salida_almuerzo',  svgPath:'<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>' },
+  en_almuerzo:      { key:'regreso_almuerzo', label:'Regreso de almuerzo',  clase:'regreso_almuerzo', svgPath:'<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/>' },
+  regreso_almuerzo: { key:'salida_final',     label:'Salida registrada',    clase:'salida_final',     svgPath:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>' },
+  salio:            { key:null,               label:'Jornada completada',   clase:'salida_final',     svgPath:'<polyline points="20 6 9 17 4 12"/>' },
 };
 
 // ══ INICIO ════════════════════════════════════════════════════════
-window.addEventListener('load', ()=>{
-  if(localStorage.getItem('kp_device_auth')==='1'){
+window.addEventListener('load', () => {
+  if (localStorage.getItem('kp_device_auth') === '1') {
     mostrarKiosko();
   } else {
-    mostrarPantalla('screen-auth');
-    const urlInput=document.getElementById('auth-url');
-    urlInput.value = CONFIG.servidor;
-    document.getElementById('auth-device-id').textContent='ID: '+generarDeviceId();
-    setTimeout(()=>document.getElementById('auth-pass').focus(),300);
+    document.getElementById('screen-auth').classList.add('show');
+    document.getElementById('auth-url').value = CONFIG.servidor;
+    document.getElementById('auth-device-id').textContent = 'ID: ' + generarDeviceId();
+    setTimeout(() => document.getElementById('auth-pass').focus(), 400);
   }
   setTimeout(cargarModelos, 2000);
 });
 
-function mostrarKiosko(){
-  ocultarTodasPantallas();
-  document.getElementById('app').style.display='flex';
+function mostrarKiosko() {
+  ['screen-auth','screen-registro','screen-cam'].forEach(id => document.getElementById(id).classList.remove('show'));
+  document.getElementById('app').style.display = 'flex';
   tick(); setInterval(tick, 1000);
   initHold();
   initTeclado();
 }
 
-function mostrarPantalla(id){
-  ocultarTodasPantallas();
-  document.getElementById(id).classList.add('show');
-}
-
-function ocultarTodasPantallas(){
-  ['screen-auth','screen-registro','screen-cam'].forEach(id=>{
-    document.getElementById(id).classList.remove('show');
-  });
-  document.getElementById('app').style.display='none';
-}
-
 // ══ MODELOS ═══════════════════════════════════════════════════════
-async function cargarModelos(){
-  if(modelsLoaded) return true;
-  try{
+async function cargarModelos() {
+  if (modelsLoaded) return true;
+  try {
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
-    modelsLoaded=true; return true;
-  }catch(e){ return false; }
+    modelsLoaded = true; return true;
+  } catch(e) { return false; }
 }
 
-// ══ DEVICE ID / AUTH ══════════════════════════════════════════════
-function generarDeviceId(){
-  let id=localStorage.getItem('kp_device_id');
-  if(!id){ id='dev_'+Math.random().toString(36).substr(2,9)+'_'+Date.now().toString(36); localStorage.setItem('kp_device_id',id); }
+// ══ DEVICE AUTH ════════════════════════════════════════════════════
+function generarDeviceId() {
+  let id = localStorage.getItem('kp_device_id');
+  if (!id) { id = 'dev_' + Math.random().toString(36).substr(2,9) + '_' + Date.now().toString(36); localStorage.setItem('kp_device_id', id); }
   return id;
 }
 
-async function autorizarDispositivo(){
-  const url=document.getElementById('auth-url').value.trim().replace(/\/$/,'');
-  const pass=document.getElementById('auth-pass').value.trim();
-  const err=document.getElementById('auth-err');
-  if(!url||!pass){err.textContent='Completa los campos';return;}
-  err.textContent='Verificando...';
-  CONFIG.servidor=url;
-  try{
-    const r=await fetch(`${url}/admin/verificar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:pass})});
-    const d=await r.json();
-    if(d.ok){
-      CONFIG.adminKey=pass;
-      localStorage.setItem('kp_device_auth','1');
-      localStorage.setItem('kp_servidor',url);
-      localStorage.setItem('kp_adminKey',pass);
-      err.textContent='';
+async function autorizarDispositivo() {
+  const url  = (document.getElementById('auth-url').value || window.location.origin).trim().replace(/\/$/,'');
+  const pass = document.getElementById('auth-pass').value.trim();
+  const err  = document.getElementById('auth-err');
+  if (!pass) { err.textContent = 'Ingresa la contraseña'; return; }
+  err.textContent = 'Verificando...';
+  CONFIG.servidor = url;
+  try {
+    const r = await fetch(`${url}/admin/verificar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:pass}) });
+    const d = await r.json();
+    if (d.ok) {
+      CONFIG.adminKey = pass;
+      localStorage.setItem('kp_device_auth', '1');
+      localStorage.setItem('kp_servidor', url);
+      localStorage.setItem('kp_adminKey', pass);
+      err.textContent = '';
       mostrarKiosko();
     } else {
-      err.textContent='Contraseña incorrecta';
-      document.getElementById('auth-pass').value='';
+      err.textContent = 'Contraseña incorrecta';
+      document.getElementById('auth-pass').value = '';
     }
-  }catch(e){
-    err.textContent='No se pudo conectar al servidor';
-  }
+  } catch(e) { err.textContent = 'No se pudo conectar al servidor'; }
 }
 
 // ══ RELOJ ══════════════════════════════════════════════════════════
-const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-function tick(){
-  const n=new Date();
-  document.getElementById('reloj-hora').innerHTML=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}<span class="reloj-seg">${String(n.getSeconds()).padStart(2,'0')}</span>`;
-  document.getElementById('reloj-fecha').textContent=`${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`;
+const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function tick() {
+  const n = new Date();
+  document.getElementById('reloj-hora').textContent = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('reloj-seg').textContent  = String(n.getSeconds()).padStart(2,'0');
+  document.getElementById('reloj-fecha').textContent = `${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`;
 }
 
 // ══ HOLD TO OPEN ADMIN ════════════════════════════════════════════
-function initHold(){
-  const header=document.getElementById('reloj-header');
-  const barFill=document.getElementById('hold-bar-fill');
-  let holdTimer=null;
-  function startHold(e){
+function initHold() {
+  const header  = document.getElementById('reloj-header');
+  const barFill = document.getElementById('hold-bar-fill');
+  let holdTimer = null;
+  function startHold(e) {
     e.preventDefault();
     header.classList.add('holding');
-    barFill.style.transition='width 3s linear';
-    barFill.style.width='100%';
-    holdTimer=setTimeout(()=>{ barFill.style.transition='none'; barFill.style.width='0%'; header.classList.remove('holding'); abrirAdmin(); },3000);
+    barFill.style.transition = 'width 3s linear';
+    barFill.style.width = '100%';
+    holdTimer = setTimeout(() => {
+      barFill.style.transition = 'none'; barFill.style.width = '0%';
+      header.classList.remove('holding');
+      abrirAdmin();
+    }, 3000);
   }
-  function endHold(){
-    if(holdTimer){clearTimeout(holdTimer);holdTimer=null;}
+  function endHold() {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
     header.classList.remove('holding');
-    barFill.style.transition='width 0.2s ease';
-    barFill.style.width='0%';
+    barFill.style.transition = 'width .2s ease';
+    barFill.style.width = '0%';
   }
-  header.addEventListener('mousedown',startHold);
-  header.addEventListener('touchstart',startHold,{passive:false});
-  header.addEventListener('mouseup',endHold);
-  header.addEventListener('mouseleave',endHold);
-  header.addEventListener('touchend',endHold);
-  header.addEventListener('touchcancel',endHold);
+  header.addEventListener('mousedown', startHold);
+  header.addEventListener('touchstart', startHold, {passive:false});
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev => header.addEventListener(ev, endHold));
 }
 
-// ══ PIN ════════════════════════════════════════════════════════════
-let pin='', procesando=false;
+// ══ TECLADO ════════════════════════════════════════════════════════
+let pin = '', procesando = false;
 
-function initTeclado(){
-  document.addEventListener('keydown',e=>{
-    if(document.getElementById('admin-overlay').classList.contains('show')) return;
-    if(e.key>='0'&&e.key<='9') presionar(e.key);
-    else if(e.key==='Backspace') presionar('del');
-    else if(e.key==='Enter') presionar('enter');
+function initTeclado() {
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('admin-overlay').classList.contains('show')) return;
+    if (e.key >= '0' && e.key <= '9') presionar(e.key);
+    else if (e.key === 'Backspace') presionar('del');
+    else if (e.key === 'Enter') presionar('enter');
   });
-  document.getElementById('teclado').addEventListener('click',e=>{
-    const t=e.target.closest('.tecla');
-    if(!t) return;
-    t.classList.add('press'); setTimeout(()=>t.classList.remove('press'),120);
+  document.getElementById('teclado').addEventListener('click', e => {
+    const t = e.target.closest('.key');
+    if (!t) return;
+    t.classList.add('press'); setTimeout(() => t.classList.remove('press'), 120);
     presionar(t.dataset.n);
   });
 }
 
-function actualizarDots(){
-  document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pin.length));
+function actualizarDots() {
+  document.querySelectorAll('.pin-dot').forEach((d,i) => d.classList.toggle('filled', i < pin.length));
 }
 
-function presionar(n){
-  if(procesando) return;
-  if(n==='del'){ pin=pin.slice(0,-1); }
-  else if(n==='enter'){ if(pin.length>=4) iniciarFlujo(); return; }
-  else{ if(pin.length>=4) return; pin+=n; }
+function presionar(n) {
+  if (procesando) return;
+  if (n === 'del') { pin = pin.slice(0,-1); }
+  else if (n === 'enter') { if (pin.length >= 4) iniciarFlujo(); return; }
+  else { if (pin.length >= 4) return; pin += n; }
   actualizarDots();
-  if(pin.length===4) setTimeout(()=>iniciarFlujo(),200);
+  if (pin.length === 4) setTimeout(() => iniciarFlujo(), 200);
 }
 
-function resetPIN(){
-  pin=''; procesando=false; actualizarDots();
-  const btn=document.getElementById('btn-accion');
-  btn.classList.remove('loading'); btn.textContent='Registrar';
+function resetPIN() {
+  pin = ''; procesando = false; actualizarDots();
+  const btn = document.getElementById('btn-action');
+  btn.classList.remove('loading');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Registrar';
 }
 
 // ══ FLUJO PRINCIPAL ════════════════════════════════════════════════
-async function iniciarFlujo(){
-  if(procesando||pin.length<4) return;
-  procesando=true;
-  const btn=document.getElementById('btn-accion');
-  btn.classList.add('loading'); btn.textContent='...';
+async function iniciarFlujo() {
+  if (procesando || pin.length < 4) return;
+  procesando = true;
+  const btn = document.getElementById('btn-action');
+  btn.classList.add('loading'); btn.textContent = 'Verificando...';
 
-  try{
-    // 1. Consultar estado del empleado
-    const r=await fetch(`${CONFIG.servidor}/estado`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({pin})});
-    const d=await r.json();
+  try {
+    const r = await fetch(`${CONFIG.servidor}/estado`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey}, body: JSON.stringify({pin}) });
+    const d = await r.json();
 
-    if(!d.ok){ mostrarResultado('❌','PIN incorrecto',d.error||'Intenta de nuevo','error',3,''); resetPIN(); return; }
-    if(d.estado==='salio'){ mostrarResultado('✅',d.nombre,'JORNADA COMPLETADA','salida_final',4,''); resetPIN(); return; }
+    if (!d.ok) { mostrarResultado(null, 'PIN incorrecto', d.error||'Verifica tu PIN e intenta de nuevo', 'error', 3, ''); resetPIN(); return; }
+    if (d.estado === 'salio') { mostrarResultado(null, d.nombre, 'Jornada completada', 'salida_final', 4, ''); resetPIN(); return; }
 
-    const pinGuardado=pin, nombreGuardado=d.nombre, estadoGuardado=d.estado;
-    btn.classList.remove('loading'); procesando=false;
+    const pinG = pin, nombreG = d.nombre, estadoG = d.estado;
+    btn.classList.remove('loading'); procesando = false;
 
-    // 2. Verificar si tiene descriptor facial en el servidor
-    const descriptor=await getDescriptor(pinGuardado);
-
-    if(descriptor){
-      // Tiene cara → verificar
-      const ok=await verificarRostro(pinGuardado, nombreGuardado, descriptor);
-      if(!ok){ resetPIN(); return; }
+    const descriptor = await getDescriptor(pinG);
+    if (descriptor) {
+      const ok = await verificarRostro(pinG, nombreG, descriptor);
+      if (!ok) { resetPIN(); return; }
     } else {
-      // Sin cara → registro obligatorio con admin
-      const registrado=await flujoRegistroFacial(pinGuardado, nombreGuardado);
-      if(!registrado){ resetPIN(); return; }
+      const reg = await flujoRegistroFacial(pinG, nombreG);
+      if (!reg) { resetPIN(); return; }
     }
 
-    // 3. Enviar ponche
-    await enviarPonche(pinGuardado, estadoGuardado);
-
-  }catch(e){
-    mostrarResultado('📡','Sin conexión','Verifica el WiFi','error',3,'');
+    await enviarPonche(pinG, estadoG);
+  } catch(e) {
+    mostrarResultado(null, 'Sin conexión', 'Verifica el WiFi e intenta de nuevo', 'error', 3, '');
     resetPIN();
   }
 }
 
-// ══ DESCRIPTORES EN SERVIDOR ══════════════════════════════════════
-async function getDescriptor(pin){
-  if(descriptoresFaciales[pin] && descriptoresFaciales[pin] instanceof Float32Array)
-    return descriptoresFaciales[pin];
-  try{
-    const r=await fetch(`${CONFIG.servidor}/admin/facial/${pin}`,{headers:{'x-admin-key':CONFIG.adminKey}});
-    if(!r.ok) return null;
-    const d=await r.json();
-    if(d.ok && d.descriptor){
-      descriptoresFaciales[pin]=new Float32Array(d.descriptor);
-      return descriptoresFaciales[pin];
-    }
-  }catch(e){}
+// ══ DESCRIPTORES ══════════════════════════════════════════════════
+async function getDescriptor(pin) {
+  if (descriptoresFaciales[pin] instanceof Float32Array) return descriptoresFaciales[pin];
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/facial/${pin}`, { headers:{'x-admin-key':CONFIG.adminKey} });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.ok && d.descriptor) { descriptoresFaciales[pin] = new Float32Array(d.descriptor); return descriptoresFaciales[pin]; }
+  } catch(e) {}
   return null;
 }
 
-async function guardarDescriptorServidor(pin, descriptor, nombre){
-  try{
-    const r=await fetch(`${CONFIG.servidor}/admin/facial/guardar`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
-      body:JSON.stringify({pin, descriptor:Array.from(descriptor), nombre})
-    });
-    const d=await r.json();
-    return d.ok;
-  }catch(e){ return false; }
+async function guardarDescriptorServidor(pin, descriptor, nombre) {
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/facial/guardar`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey}, body: JSON.stringify({pin, descriptor:Array.from(descriptor), nombre}) });
+    return (await r.json()).ok;
+  } catch(e) { return false; }
 }
 
 // ══ VERIFICACIÓN FACIAL ═══════════════════════════════════════════
-let streamActivo=null;
+let streamActivo = null;
 
-async function verificarRostro(pinEmp, nombre, descriptor){
-  return new Promise(async resolve=>{
-    mostrarPantalla('screen-cam');
-    const status=document.getElementById('cam-status');
-    const ring=document.getElementById('cam-ring');
-    document.getElementById('cam-titulo').textContent=nombre?`Hola, ${nombre.split(' ')[0]}`:'Verificando identidad';
-    status.textContent='Activando cámara...'; status.className='cam-status'; ring.className='cam-ring';
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-      streamActivo=stream;
-      const video=document.getElementById('cam-video'); video.srcObject=stream;
-      await new Promise(r=>video.onloadedmetadata=r);
-      if(!modelsLoaded){ status.textContent='Cargando IA...'; await cargarModelos(); }
-      status.textContent='Mirá directo a la cámara 👁️';
-      const matcher=new faceapi.FaceMatcher([new faceapi.LabeledFaceDescriptors(pinEmp,[descriptor])],0.5);
-      let intentos=0;
-      const iv=setInterval(async()=>{
+async function verificarRostro(pinEmp, nombre, descriptor) {
+  return new Promise(async resolve => {
+    const camScreen = document.getElementById('screen-cam');
+    const status    = document.getElementById('cam-status');
+    const ring      = document.getElementById('cam-ring');
+    const progress  = document.getElementById('cam-progress');
+    document.getElementById('cam-titulo').textContent = nombre ? `Hola, ${nombre.split(' ')[0]}` : 'Verificando identidad';
+    camScreen.classList.add('show');
+    status.textContent = 'Activando cámara...'; status.className = 'cam-status';
+    ring.className = 'cam-ring scanning';
+    progress.style.display = 'block';
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+      streamActivo = stream;
+      const video = document.getElementById('cam-video'); video.srcObject = stream;
+      await new Promise(r => video.onloadedmetadata = r);
+      if (!modelsLoaded) { status.textContent = 'Cargando modelos...'; await cargarModelos(); }
+      status.textContent = 'Mira directo a la cámara';
+      const matcher = new faceapi.FaceMatcher([new faceapi.LabeledFaceDescriptors(pinEmp, [descriptor])], 0.5);
+      let intentos = 0;
+      const iv = setInterval(async () => {
         intentos++;
-        try{
-          const det=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true).withFaceDescriptor();
-          if(det){
-            const res=matcher.findBestMatch(det.descriptor);
-            if(res.label===pinEmp){
-              clearInterval(iv); ring.className='cam-ring ok';
-              status.textContent='✅ Identidad confirmada'; status.className='cam-status ok';
-              setTimeout(()=>{ detenerStream(); mostrarKiosko(); resolve(true); },800);
-            } else status.textContent='Sigue mirando... 👁️';
-          } else status.textContent=intentos<8?'Buscando tu rostro...':'Acerca más el teléfono 📱';
-        }catch(e){}
-        if(intentos>=16){
-          clearInterval(iv); ring.className='cam-ring fail';
-          status.textContent='❌ No se pudo verificar'; status.className='cam-status fail';
-          setTimeout(()=>{ detenerStream(); mostrarKiosko(); resolve(false); },1500);
+        try {
+          const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true).withFaceDescriptor();
+          if (det) {
+            const res = matcher.findBestMatch(det.descriptor);
+            if (res.label === pinEmp) {
+              clearInterval(iv);
+              ring.className = 'cam-ring ok'; progress.style.display = 'none';
+              status.textContent = 'Identidad confirmada'; status.className = 'cam-status ok';
+              setTimeout(() => { detenerStream(); camScreen.classList.remove('show'); resolve(true); }, 900);
+            } else status.textContent = 'Sigue mirando...';
+          } else status.textContent = intentos < 8 ? 'Buscando tu rostro...' : 'Acerca más el dispositivo';
+        } catch(e) {}
+        if (intentos >= 16) {
+          clearInterval(iv);
+          ring.className = 'cam-ring fail'; progress.style.display = 'none';
+          status.textContent = 'No se pudo verificar'; status.className = 'cam-status fail';
+          setTimeout(() => { detenerStream(); camScreen.classList.remove('show'); resolve(false); }, 1500);
         }
-      },500);
-    }catch(e){
-      status.textContent='Error con la cámara'; status.className='cam-status fail';
-      setTimeout(()=>{ detenerStream(); mostrarKiosko(); resolve(false); },2000);
+      }, 500);
+    } catch(e) {
+      status.textContent = 'Error al acceder a la cámara'; status.className = 'cam-status fail';
+      setTimeout(() => { detenerStream(); camScreen.classList.remove('show'); resolve(false); }, 2000);
     }
   });
 }
 
-function cancelarVerificacion(){ detenerStream(); mostrarKiosko(); procesando=false; }
-function detenerStream(){ if(streamActivo){ streamActivo.getTracks().forEach(t=>t.stop()); streamActivo=null; } }
+function cancelarVerificacion() { detenerStream(); document.getElementById('screen-cam').classList.remove('show'); procesando = false; }
+function detenerStream() { if (streamActivo) { streamActivo.getTracks().forEach(t => t.stop()); streamActivo = null; } }
 
-// ══ REGISTRO FACIAL (primera vez, requiere admin) ══════════════════
-let regStreamMain=null, regPinMain=null, regNombreMain=null;
+// ══ REGISTRO FACIAL ════════════════════════════════════════════════
+let regStreamMain = null, regPinMain = null, regNombreMain = null;
 
-async function flujoRegistroFacial(pinEmp, nombre){
-  return new Promise(resolve=>{
-    regPinMain=pinEmp; regNombreMain=nombre;
-    document.getElementById('reg-emp-nombre-main').textContent=nombre;
-    document.getElementById('reg-admin-pass-main').value='';
-    document.getElementById('reg-admin-err').textContent='';
-    document.getElementById('reg-capture-err').textContent='';
-    document.getElementById('reg-paso-admin').style.display='flex';
-    document.getElementById('reg-paso-camara-main').style.display='none';
-    document.getElementById('reg-capture-btn').disabled=true;
-    mostrarPantalla('screen-registro');
-
-    // Guardar resolve para usarla después
-    window._regResolve=resolve;
-    setTimeout(()=>document.getElementById('reg-admin-pass-main').focus(),300);
+async function flujoRegistroFacial(pinEmp, nombre) {
+  return new Promise(resolve => {
+    regPinMain = pinEmp; regNombreMain = nombre;
+    document.getElementById('reg-emp-nombre-main').textContent = nombre;
+    document.getElementById('reg-admin-pass-main').value = '';
+    document.getElementById('reg-admin-err').textContent = '';
+    document.getElementById('reg-capture-err').textContent = '';
+    document.getElementById('reg-capture-btn').disabled = true;
+    document.getElementById('reg-paso-admin').style.display = 'flex';
+    document.getElementById('reg-paso-camara-main').style.display = 'none';
+    document.getElementById('screen-registro').classList.add('show');
+    window._regResolve = resolve;
+    setTimeout(() => document.getElementById('reg-admin-pass-main').focus(), 300);
   });
 }
 
-async function verificarAdminReg(){
-  const pass=document.getElementById('reg-admin-pass-main').value.trim();
-  const err=document.getElementById('reg-admin-err');
-  if(!pass){err.textContent='Ingresa la contraseña';return;}
-  err.textContent='Verificando...';
-  try{
-    const r=await fetch(`${CONFIG.servidor}/admin/verificar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:pass})});
-    const d=await r.json();
-    if(d.ok){
-      err.textContent='';
-      document.getElementById('reg-paso-admin').style.display='none';
-      document.getElementById('reg-paso-camara-main').style.display='flex';
-      // Activar cámara
-      try{
-        const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-        regStreamMain=stream;
-        // Crear video element si no existe
-        const video=document.getElementById('reg-video-main');
-        video.srcObject=stream;
-        if(!modelsLoaded){ document.getElementById('reg-capture-err').textContent='Cargando modelos...'; await cargarModelos(); }
-        document.getElementById('reg-capture-err').textContent='Coloca tu cara en el círculo y presiona Capturar';
-        document.getElementById('reg-capture-btn').disabled=false;
-      }catch(e){
-        document.getElementById('reg-capture-err').textContent='Error con la cámara';
-      }
+async function verificarAdminReg() {
+  const pass = document.getElementById('reg-admin-pass-main').value.trim();
+  const err  = document.getElementById('reg-admin-err');
+  if (!pass) { err.textContent = 'Ingresa la contraseña'; return; }
+  err.textContent = 'Verificando...';
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/verificar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:pass}) });
+    const d = await r.json();
+    if (d.ok) {
+      err.textContent = '';
+      document.getElementById('reg-paso-admin').style.display = 'none';
+      document.getElementById('reg-paso-camara-main').style.display = 'flex';
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+        regStreamMain = stream;
+        document.getElementById('reg-video-main').srcObject = stream;
+        if (!modelsLoaded) { document.getElementById('reg-capture-err').textContent = 'Cargando modelos de IA...'; await cargarModelos(); }
+        document.getElementById('reg-capture-err').textContent = 'Coloca tu cara en el círculo y presiona Capturar';
+        document.getElementById('reg-capture-btn').disabled = false;
+      } catch(e) { document.getElementById('reg-capture-err').textContent = 'Error al acceder a la cámara'; }
     } else {
-      err.textContent='Contraseña incorrecta';
-      document.getElementById('reg-admin-pass-main').value='';
-      setTimeout(()=>err.textContent='',2000);
+      err.textContent = 'Contraseña incorrecta';
+      document.getElementById('reg-admin-pass-main').value = '';
+      setTimeout(() => err.textContent = '', 2000);
     }
-  }catch(e){ err.textContent='Error de conexión'; }
+  } catch(e) { err.textContent = 'Error de conexión'; }
 }
 
-async function capturarRostroMain(){
-  const btn=document.getElementById('reg-capture-btn');
-  const err=document.getElementById('reg-capture-err');
-  btn.disabled=true; err.textContent='Detectando rostro...';
-  try{
-    const video=document.getElementById('reg-video-main');
-    const det=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true).withFaceDescriptor();
-    if(!det){ err.textContent='No se detectó rostro. Intenta de nuevo.'; btn.disabled=false; return; }
-    // Guardar en servidor
-    const guardado=await guardarDescriptorServidor(regPinMain, det.descriptor, regNombreMain);
-    descriptoresFaciales[regPinMain]=det.descriptor;
-    err.textContent=guardado?'✅ Rostro registrado exitosamente':'✅ Guardado localmente';
-    if(regStreamMain){ regStreamMain.getTracks().forEach(t=>t.stop()); regStreamMain=null; }
-    setTimeout(()=>{
-      mostrarKiosko();
-      if(window._regResolve){ window._regResolve(true); window._regResolve=null; }
-    },1500);
-  }catch(e){
-    err.textContent='Error: '+e.message; btn.disabled=false;
-  }
+async function capturarRostroMain() {
+  const btn = document.getElementById('reg-capture-btn');
+  const err = document.getElementById('reg-capture-err');
+  btn.disabled = true; err.textContent = 'Detectando rostro...';
+  try {
+    const video = document.getElementById('reg-video-main');
+    const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true).withFaceDescriptor();
+    if (!det) { err.textContent = 'No se detectó rostro. Intenta de nuevo.'; btn.disabled = false; return; }
+    const guardado = await guardarDescriptorServidor(regPinMain, det.descriptor, regNombreMain);
+    descriptoresFaciales[regPinMain] = det.descriptor;
+    err.textContent = guardado ? 'Rostro registrado exitosamente' : 'Guardado localmente';
+    if (regStreamMain) { regStreamMain.getTracks().forEach(t => t.stop()); regStreamMain = null; }
+    setTimeout(() => {
+      document.getElementById('screen-registro').classList.remove('show');
+      if (window._regResolve) { window._regResolve(true); window._regResolve = null; }
+    }, 1500);
+  } catch(e) { err.textContent = 'Error: ' + e.message; btn.disabled = false; }
+}
+
+function cancelarRegistro() {
+  if (regStreamMain) { regStreamMain.getTracks().forEach(t => t.stop()); regStreamMain = null; }
+  document.getElementById('screen-registro').classList.remove('show');
+  if (window._regResolve) { window._regResolve(false); window._regResolve = null; }
+  procesando = false;
 }
 
 // ══ ENVIAR PONCHE ══════════════════════════════════════════════════
-async function enviarPonche(pinEmp, estadoEmp){
-  const info=ACCIONES[estadoEmp];
-  if(!info||!info.key) return;
-  try{
-    const r=await fetch(`${CONFIG.servidor}/ponche`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({pin:pinEmp,accion:info.key})});
-    const d=await r.json();
-    const ahora=new Date();
-    const hora=`${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
-    if(d.ok) mostrarResultado(info.emoji,d.nombre,info.label,info.clase,5,hora,d.alertas||[]);
-    else mostrarResultado('❌','Error',d.error||'Intenta de nuevo','error',3,'');
-  }catch(e){ mostrarResultado('📡','Sin conexión','Verifica el WiFi','error',3,''); }
+async function enviarPonche(pinEmp, estadoEmp) {
+  const info = ACCIONES[estadoEmp];
+  if (!info || !info.key) return;
+  try {
+    const r = await fetch(`${CONFIG.servidor}/ponche`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey}, body: JSON.stringify({pin:pinEmp, accion:info.key}) });
+    const d = await r.json();
+    const ahora = new Date();
+    const hora = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
+    if (d.ok) mostrarResultado(info.svgPath, d.nombre, info.label, info.clase, 5, hora, d.alertas||[]);
+    else mostrarResultado(null, 'Error', d.error||'Intenta de nuevo', 'error', 3, '');
+  } catch(e) { mostrarResultado(null, 'Sin conexión', 'Verifica el WiFi', 'error', 3, ''); }
   resetPIN();
 }
 
 // ══ RESULTADO ══════════════════════════════════════════════════════
-let overlayTimer=null;
-function mostrarResultado(emoji,nombre,badge,tipo,seg,hora,alertas=[]){
-  document.getElementById('res-emoji').textContent=emoji;
-  document.getElementById('res-nombre').textContent=nombre;
-  const b=document.getElementById('res-badge'); b.textContent=badge; b.className=`res-badge ${tipo}`;
-  document.getElementById('res-hora').textContent=hora;
-  document.getElementById('res-alertas').innerHTML=(alertas||[]).map(a=>`<div class="res-alerta">${a}</div>`).join('');
-  const oc=document.getElementById('overlay-card'); oc.className=`overlay-card ${tipo}`;
-  const bf=document.getElementById('barra-fill'); bf.className=`barra-fill ${tipo}`;
-  bf.style.setProperty('--dur',`${seg}s`); bf.style.animation='none'; bf.offsetHeight; bf.style.animation='';
-  const ov=document.getElementById('overlay'); ov.classList.add('show');
-  if(overlayTimer) clearTimeout(overlayTimer);
-  overlayTimer=setTimeout(()=>ov.classList.remove('show'),seg*1000);
+let overlayTimer = null;
+function mostrarResultado(svgPath, nombre, badge, tipo, seg, hora, alertas=[]) {
+  const errIcon = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+  document.getElementById('result-icon').className = `result-icon ${tipo}`;
+  document.getElementById('result-svg').innerHTML = svgPath || errIcon;
+  document.getElementById('result-name').textContent = nombre;
+  document.getElementById('result-badge').textContent = badge;
+  document.getElementById('result-badge').className = `result-badge ${tipo}`;
+  document.getElementById('result-time').textContent = hora;
+  document.getElementById('result-alerts').innerHTML = (alertas||[]).map(a=>`<div class="result-alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>${a}</div>`).join('');
+  const rc = document.getElementById('result-card'); rc.className = `result-card ${tipo}`;
+  const pf = document.getElementById('progress-fill'); pf.className = `progress-fill ${tipo}`;
+  pf.style.setProperty('--dur', `${seg}s`); pf.style.animation = 'none'; pf.offsetHeight; pf.style.animation = '';
+  const ov = document.getElementById('overlay'); ov.classList.add('show');
+  if (overlayTimer) clearTimeout(overlayTimer);
+  overlayTimer = setTimeout(() => ov.classList.remove('show'), seg * 1000);
 }
-document.getElementById('overlay').addEventListener('click',()=>{ document.getElementById('overlay').classList.remove('show'); if(overlayTimer) clearTimeout(overlayTimer); });
+document.getElementById('overlay').addEventListener('click', () => { document.getElementById('overlay').classList.remove('show'); if(overlayTimer) clearTimeout(overlayTimer); });
 
 // ══ PANEL ADMIN ════════════════════════════════════════════════════
-let adminAutenticado=false, empleadosAdmin=[];
+let adminAutenticado = false, empleadosAdmin = [];
 
-function abrirAdmin(){
-  adminAutenticado=false;
-  document.getElementById('admin-login-pass').value='';
-  document.getElementById('admin-login-err').textContent='';
-  document.getElementById('admin-login-wrap').style.display='flex';
-  document.getElementById('admin-panel-wrap').style.display='none';
+function abrirAdmin() {
+  adminAutenticado = false;
+  document.getElementById('admin-login-pass').value = '';
+  document.getElementById('admin-login-err').textContent = '';
+  document.getElementById('admin-login-sheet').style.display = 'block';
+  document.getElementById('admin-panel-sheet').style.display = 'none';
   document.getElementById('admin-overlay').classList.add('show');
-  setTimeout(()=>document.getElementById('admin-login-pass').focus(),300);
+  setTimeout(() => document.getElementById('admin-login-pass').focus(), 300);
 }
 
-function cerrarAdmin(){ document.getElementById('admin-overlay').classList.remove('show'); adminAutenticado=false; }
+function cerrarAdmin() { document.getElementById('admin-overlay').classList.remove('show'); adminAutenticado = false; }
 
-async function adminLogin(){
-  const pass=document.getElementById('admin-login-pass').value.trim();
-  const err=document.getElementById('admin-login-err');
-  if(!pass){err.textContent='Ingresa la contraseña';return;}
-  err.textContent='Verificando...';
-  try{
-    const r=await fetch(`${CONFIG.servidor}/admin/verificar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:pass})});
-    const d=await r.json();
-    if(d.ok){
-      CONFIG.adminKey=pass;
-      localStorage.setItem('kp_adminKey',pass);
-      adminAutenticado=true; err.textContent='';
-      document.getElementById('admin-login-wrap').style.display='none';
-      document.getElementById('admin-panel-wrap').style.display='flex';
+async function adminLogin() {
+  const pass = document.getElementById('admin-login-pass').value.trim();
+  const err  = document.getElementById('admin-login-err');
+  if (!pass) { err.textContent = 'Ingresa la contraseña'; return; }
+  err.textContent = 'Verificando...';
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/verificar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:pass}) });
+    const d = await r.json();
+    if (d.ok) {
+      CONFIG.adminKey = pass; localStorage.setItem('kp_adminKey', pass);
+      adminAutenticado = true; err.textContent = '';
+      document.getElementById('admin-login-sheet').style.display = 'none';
+      document.getElementById('admin-panel-sheet').style.display = 'flex';
       adminTab('reporte');
-    } else { err.textContent='Contraseña incorrecta'; document.getElementById('admin-login-pass').value=''; setTimeout(()=>err.textContent='',2000); }
-  }catch(e){ err.textContent='Error de conexión'; }
+    } else { err.textContent = 'Contraseña incorrecta'; document.getElementById('admin-login-pass').value = ''; setTimeout(() => err.textContent = '', 2000); }
+  } catch(e) { err.textContent = 'Error de conexión'; }
 }
 
-function adminTab(tab){
-  ['reporte','empleados','config'].forEach(t=>{ document.getElementById(`atab-${t}`).classList.toggle('active',t===tab); });
-  if(tab==='reporte') renderTabReporte();
-  else if(tab==='empleados') renderTabEmpleados();
-  else if(tab==='config') renderTabConfig();
+function adminTab(tab) {
+  ['reporte','empleados','config'].forEach(t => document.getElementById(`atab-${t}`).classList.toggle('active', t === tab));
+  if (tab === 'reporte')    renderTabReporte();
+  else if (tab === 'empleados') renderTabEmpleados();
+  else if (tab === 'config')    renderTabConfig();
 }
 
 // ── TAB REPORTE ────────────────────────────────────────────────────
-async function renderTabReporte(){
-  const c=document.getElementById('admin-content');
-  c.innerHTML='<div style="text-align:center;padding:32px;color:rgba(255,255,255,.4)">⏳ Cargando...</div>';
-  try{
-    const r=await fetch(`${CONFIG.servidor}/admin/reporte-hoy`,{headers:{'x-admin-key':CONFIG.adminKey}});
-    const d=await r.json();
-    if(d.error){c.innerHTML=`<div style="color:var(--red);padding:20px;text-align:center">${d.error}</div>`;return;}
-    const emps=d.empleados||[];
-    const conDesc=emps.filter(e=>(e.descuentoTarde+e.excesosAlmuerzo)>0).length;
-    const sinAlm=emps.filter(e=>e.sin_almuerzo).length;
-    let html=`<div class="section-title">Reporte del día</div>
-      <div class="stat-row">
-        <div class="stat-box"><div class="stat-box-num">${emps.length}</div><div class="stat-box-lbl">Presentes</div></div>
-        <div class="stat-box"><div class="stat-box-num r">${conDesc}</div><div class="stat-box-lbl">Con descuento</div></div>
-        <div class="stat-box"><div class="stat-box-num o">${sinAlm}</div><div class="stat-box-lbl">Sin almuerzo</div></div>
+async function renderTabReporte() {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:13px">Cargando reporte...</div>';
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/reporte-hoy`, { headers:{'x-admin-key':CONFIG.adminKey} });
+    const d = await r.json();
+    if (d.error) { c.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;font-size:13px">${d.error}</div>`; return; }
+    const emps = d.empleados || [];
+    const conDesc = emps.filter(e => (e.descuentoTarde + e.excesosAlmuerzo) > 0).length;
+    const sinAlm  = emps.filter(e => e.sin_almuerzo).length;
+    let html = `<div class="ac-title">Hoy · ${emps.length} presentes</div>
+      <div class="ac-stat-row">
+        <div class="ac-stat"><div class="ac-stat-num">${emps.length}</div><div class="ac-stat-lbl">Presentes</div></div>
+        <div class="ac-stat"><div class="ac-stat-num r">${conDesc}</div><div class="ac-stat-lbl">Descuentos</div></div>
+        <div class="ac-stat"><div class="ac-stat-num a">${sinAlm}</div><div class="ac-stat-lbl">Sin almuerzo</div></div>
       </div>`;
-    if(!emps.length) html+='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.3);font-size:13px">No hay registros hoy</div>';
-    else emps.forEach(e=>{
-      const desc=e.descuentoTarde+e.excesosAlmuerzo;
-      const badges=[];
-      if(e.sin_almuerzo) badges.push(`<span class="rep-badge warn">⚠️ Sin almuerzo</span>`);
-      if(e.descuentoTarde>0) badges.push(`<span class="rep-badge bad">⏰ Tarde: ${e.descuentoTarde}min</span>`);
-      if(e.excesosAlmuerzo>0) badges.push(`<span class="rep-badge bad">🍽️ Exceso: ${e.excesosAlmuerzo}min</span>`);
-      if(e.bancoExtra>0) badges.push(`<span class="rep-badge ok">⭐ Extra: +${e.bancoExtra}min</span>`);
-      if(!e.sin_almuerzo&&desc===0&&e.bancoExtra===0) badges.push(`<span class="rep-badge ok">✅ Sin novedad</span>`);
-      html+=`<div class="rep-emp"><div class="rep-nom">${e.nombre}</div><div class="rep-badges">${badges.join('')}</div>
-        <div class="rep-row">
-          <div class="rep-dato"><div class="rep-dato-val">${minAHora(e.minutosTrabajados)}</div><div class="rep-dato-lbl">Trabajadas</div></div>
-          <div class="rep-dato"><div class="rep-dato-val" style="color:${desc>0?'var(--red)':'rgba(255,255,255,.4)'}">${desc>0?'-'+desc+' min':'—'}</div><div class="rep-dato-lbl">Descuento</div></div>
-          <div class="rep-dato"><div class="rep-dato-val" style="color:${e.bancoExtra>0?'#7b8fff':'rgba(255,255,255,.4)'}">${e.bancoExtra>0?'+'+e.bancoExtra+' min':'—'}</div><div class="rep-dato-lbl">Banco</div></div>
-          <div class="rep-dato"><div class="rep-dato-val" style="color:var(--green)">${e.horas_efectivas_fmt}</div><div class="rep-dato-lbl">Efectivas</div></div>
+    if (!emps.length) html += '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">No hay registros de asistencia hoy</div>';
+    else emps.forEach(e => {
+      const desc = e.descuentoTarde + e.excesosAlmuerzo;
+      const badges = [];
+      if (e.sin_almuerzo)       badges.push('<span class="rep-badge warn">Sin almuerzo</span>');
+      if (e.descuentoTarde > 0) badges.push(`<span class="rep-badge bad">Tarde ${e.descuentoTarde}min</span>`);
+      if (e.excesosAlmuerzo > 0) badges.push(`<span class="rep-badge bad">Exceso ${e.excesosAlmuerzo}min</span>`);
+      if (e.bancoExtra > 0)     badges.push(`<span class="rep-badge ok">+${e.bancoExtra}min extra</span>`);
+      if (!e.sin_almuerzo && desc === 0 && e.bancoExtra === 0) badges.push('<span class="rep-badge ok">Sin novedad</span>');
+      html += `<div class="rep-item"><div class="rep-name">${e.nombre}</div><div class="rep-badges">${badges.join('')}</div>
+        <div class="rep-stats">
+          <div class="rep-stat"><div class="rep-stat-val">${minAHora(e.minutosTrabajados)}</div><div class="rep-stat-lbl">Trabajadas</div></div>
+          <div class="rep-stat"><div class="rep-stat-val" style="color:${desc>0?'var(--red)':'var(--gray-400)'}">${desc>0?'-'+desc+'min':'—'}</div><div class="rep-stat-lbl">Descuento</div></div>
+          <div class="rep-stat"><div class="rep-stat-val" style="color:${e.bancoExtra>0?'var(--sky)':'var(--gray-400)'}">${e.bancoExtra>0?'+'+e.bancoExtra+'min':'—'}</div><div class="rep-stat-lbl">Banco</div></div>
+          <div class="rep-stat"><div class="rep-stat-val" style="color:var(--green)">${e.horas_efectivas_fmt}</div><div class="rep-stat-lbl">Efectivas</div></div>
         </div></div>`;
     });
-    c.innerHTML=html;
-  }catch(e){c.innerHTML='<div style="color:var(--red);padding:20px;text-align:center">Error de conexión</div>';}
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = '<div style="color:var(--red);padding:20px;text-align:center;font-size:13px">Error de conexión</div>'; }
 }
-function minAHora(min){if(!min)return'0:00';return`${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`;}
+function minAHora(min) { if (!min) return '0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
 
 // ── TAB EMPLEADOS ──────────────────────────────────────────────────
-async function renderTabEmpleados(filtro=''){
-  const c=document.getElementById('admin-content');
-  if(!empleadosAdmin.length){
-    c.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.4)">⏳ Cargando...</div>';
-    try{
-      const [re,rf]=await Promise.all([
-        fetch(`${CONFIG.servidor}/admin/empleados`,{headers:{'x-admin-key':CONFIG.adminKey}}),
-        fetch(`${CONFIG.servidor}/admin/facial`,{headers:{'x-admin-key':CONFIG.adminKey}})
+async function renderTabEmpleados(filtro='') {
+  const c = document.getElementById('admin-content');
+  if (!empleadosAdmin.length) {
+    c.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Cargando...</div>';
+    try {
+      const [re, rf] = await Promise.all([
+        fetch(`${CONFIG.servidor}/admin/empleados`, { headers:{'x-admin-key':CONFIG.adminKey} }),
+        fetch(`${CONFIG.servidor}/admin/facial`, { headers:{'x-admin-key':CONFIG.adminKey} })
       ]);
-      const de=await re.json(); empleadosAdmin=de.empleados||[];
-      if(rf.ok){ const df=await rf.json(); (df.empleados||[]).forEach(e=>{ if(!descriptoresFaciales[e.pin]) descriptoresFaciales[e.pin]='cached'; }); }
-    }catch(e){c.innerHTML='<div style="color:var(--red);padding:20px">Error de conexión</div>';return;}
+      empleadosAdmin = (await re.json()).empleados || [];
+      if (rf.ok) { const df = await rf.json(); (df.empleados||[]).forEach(e => { if (!descriptoresFaciales[e.pin]) descriptoresFaciales[e.pin] = 'cached'; }); }
+    } catch(e) { c.innerHTML = '<div style="color:var(--red);padding:20px;font-size:13px">Error de conexión</div>'; return; }
   }
-  const lista=filtro?empleadosAdmin.filter(e=>e.nombre.toLowerCase().includes(filtro.toLowerCase())||e.pin.includes(filtro)):empleadosAdmin;
-  let html=`<div class="section-title">Empleados (${empleadosAdmin.length})</div>
-    <input class="search-input" placeholder="🔍 Buscar..." oninput="renderTabEmpleados(this.value)" value="${filtro}"/>
-    <button class="btn-gold" style="margin-bottom:8px" onclick="sincronizarOdoo()">🔄 Sincronizar con Odoo</button>
-    <div>`;
-  lista.forEach(e=>{
-    const tieneRostro=descriptoresFaciales[e.pin]!==undefined;
-    html+=`<div class="emp-card">
-      <div class="emp-av">${e.nombre.charAt(0)}</div>
-      <div class="emp-info">
-        <div class="emp-nom">${e.nombre}</div>
-        <div class="emp-det">ID: ${e.odoo_id} · ${tieneRostro?'📸 Con rostro':'Sin rostro'}</div>
+  const lista = filtro ? empleadosAdmin.filter(e => e.nombre.toLowerCase().includes(filtro.toLowerCase()) || e.pin.includes(filtro)) : empleadosAdmin;
+  const editSvg = '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
+  const camSvg  = '<circle cx="12" cy="12" r="3"/><path d="M9 2H15L17 4H20a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3z"/>';
+  const delSvg  = '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>';
+  let html = `<div class="ac-title">${empleadosAdmin.length} empleados</div>
+    <input class="ac-search" placeholder="Buscar por nombre o PIN..." oninput="renderTabEmpleados(this.value)" value="${filtro}"/>
+    <button class="ac-btn-primary" onclick="sincronizarOdoo()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+      Sincronizar con Odoo
+    </button>`;
+  lista.forEach(e => {
+    const tieneRostro = descriptoresFaciales[e.pin] !== undefined;
+    html += `<div class="ac-emp">
+      <div class="ac-av">${e.nombre.charAt(0)}</div>
+      <div class="ac-emp-info">
+        <div class="ac-emp-name">${e.nombre}</div>
+        <div class="ac-emp-detail">ID ${e.odoo_id} · ${tieneRostro ? 'Con rostro' : 'Sin rostro'}</div>
       </div>
-      <div class="emp-pin-badge">${e.pin}</div>
-      <div class="emp-btns">
-        <button class="btn-xs edit" onclick="abrirEditarPin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}',${e.odoo_id})" title="Editar PIN">✏️</button>
-        <button class="btn-xs facial" onclick="reregistrarRostroAdmin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}') " title="Actualizar rostro">📸</button>
-        <button class="btn-xs del" onclick="abrirEliminar('${e.pin}','${e.nombre.replace(/'/g,"\\'")}') " title="Eliminar">🗑️</button>
+      <div class="ac-pin">${e.pin}</div>
+      <div class="ac-btns">
+        <button class="ac-btn" onclick="abrirEditarPin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}',${e.odoo_id})" title="Editar PIN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${editSvg}</svg></button>
+        <button class="ac-btn facial" onclick="reregistrarRostroAdmin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}') " title="Actualizar rostro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${camSvg}</svg></button>
+        <button class="ac-btn del" onclick="abrirEliminar('${e.pin}','${e.nombre.replace(/'/g,"\\'")}') " title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${delSvg}</svg></button>
       </div>
     </div>`;
   });
-  html+='</div>';
-  c.innerHTML=html;
+  c.innerHTML = html;
 }
 
-async function sincronizarOdoo(){
-  const c=document.getElementById('admin-content');
-  c.innerHTML='<div style="text-align:center;padding:32px;color:rgba(255,255,255,.4)">⏳ Sincronizando con Odoo...</div>';
-  try{
-    const [ro,rp]=await Promise.all([
-      fetch(`${CONFIG.servidor}/admin/odoo-empleados`,{headers:{'x-admin-key':CONFIG.adminKey}}),
-      fetch(`${CONFIG.servidor}/admin/empleados`,{headers:{'x-admin-key':CONFIG.adminKey}})
+async function sincronizarOdoo() {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:13px">Sincronizando con Odoo...</div>';
+  try {
+    const [ro, rp] = await Promise.all([
+      fetch(`${CONFIG.servidor}/admin/odoo-empleados`, { headers:{'x-admin-key':CONFIG.adminKey} }),
+      fetch(`${CONFIG.servidor}/admin/empleados`, { headers:{'x-admin-key':CONFIG.adminKey} })
     ]);
-    const odooEmps=(await ro.json()).empleados||[];
-    const pinsActuales=(await rp.json()).empleados||[];
-    const pinsUsados=pinsActuales.map(e=>parseInt(e.pin)).filter(n=>!isNaN(n));
-    let nextPIN=pinsUsados.length?Math.max(...pinsUsados)+1:1001;
-    const sinPin=odooEmps.filter(oe=>!pinsActuales.find(p=>p.odoo_id===oe.id));
-    if(!sinPin.length){toast('✅ Todo sincronizado, sin cambios','ok');empleadosAdmin=[];renderTabEmpleados();return;}
-    let asignados=0;
-    for(const emp of sinPin){
-      try{
-        await fetch(`${CONFIG.servidor}/admin/pin`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({odoo_id:emp.id,nombre:emp.name,pin:String(nextPIN++)})});
-        asignados++;
-      }catch(e){}
+    const odooEmps = (await ro.json()).empleados || [];
+    const pinsAct  = (await rp.json()).empleados || [];
+    const usados   = pinsAct.map(e => parseInt(e.pin)).filter(n => !isNaN(n));
+    let next = usados.length ? Math.max(...usados) + 1 : 1001;
+    const sinPin = odooEmps.filter(oe => !pinsAct.find(p => p.odoo_id === oe.id));
+    if (!sinPin.length) { toast('Todo sincronizado, sin cambios', 'ok'); empleadosAdmin = []; renderTabEmpleados(); return; }
+    let asignados = 0;
+    for (const emp of sinPin) {
+      try { await fetch(`${CONFIG.servidor}/admin/pin`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey}, body: JSON.stringify({odoo_id:emp.id, nombre:emp.name, pin:String(next++)}) }); asignados++; } catch(e) {}
     }
-    toast(`✅ ${asignados} empleado(s) sincronizado(s)`,'ok');
-    empleadosAdmin=[];renderTabEmpleados();
-  }catch(e){toast('Error al sincronizar','err');renderTabEmpleados();}
+    toast(`${asignados} empleado(s) sincronizado(s)`, 'ok');
+    empleadosAdmin = []; renderTabEmpleados();
+  } catch(e) { toast('Error al sincronizar', 'err'); renderTabEmpleados(); }
 }
 
-async function reregistrarRostroAdmin(pin,nombre){
-  // Borrar descriptor actual
+async function reregistrarRostroAdmin(pin, nombre) {
   delete descriptoresFaciales[pin];
-  try{ await fetch(`${CONFIG.servidor}/admin/facial/${pin}`,{method:'DELETE',headers:{'x-admin-key':CONFIG.adminKey}}); }catch(e){}
-
-  // Abrir cámara directamente (ya estamos autenticados como admin)
-  const regOv=document.getElementById('screen-registro');
-  regOv.style.zIndex='500';
-  document.getElementById('reg-emp-nombre-main').textContent=nombre;
-  document.getElementById('reg-paso-admin').style.display='none';
-  document.getElementById('reg-paso-camara-main').style.display='flex';
-  document.getElementById('reg-capture-btn').disabled=true;
-  document.getElementById('reg-capture-err').textContent='';
+  try { await fetch(`${CONFIG.servidor}/admin/facial/${pin}`, { method:'DELETE', headers:{'x-admin-key':CONFIG.adminKey} }); } catch(e) {}
+  const regOv = document.getElementById('screen-registro');
+  regOv.style.zIndex = '500';
+  document.getElementById('reg-emp-nombre-main').textContent = nombre;
+  document.getElementById('reg-paso-admin').style.display = 'none';
+  document.getElementById('reg-paso-camara-main').style.display = 'flex';
+  document.getElementById('reg-capture-btn').disabled = true;
+  document.getElementById('reg-capture-err').textContent = '';
   regOv.classList.add('show');
-  regPinMain=pin; regNombreMain=nombre;
-  window._regResolve=(ok)=>{ regOv.style.zIndex='300'; regOv.classList.remove('show'); if(ok) toast('✅ Rostro actualizado','ok'); renderTabEmpleados(); };
-
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-    regStreamMain=stream;
-    document.getElementById('reg-video-main').srcObject=stream;
-    if(!modelsLoaded){document.getElementById('reg-capture-err').textContent='Cargando modelos...';await cargarModelos();}
-    document.getElementById('reg-capture-err').textContent='Coloca la cara en el círculo y presiona Capturar';
-    document.getElementById('reg-capture-btn').disabled=false;
-  }catch(e){document.getElementById('reg-capture-err').textContent='Error con la cámara';}
+  regPinMain = pin; regNombreMain = nombre;
+  window._regResolve = (ok) => { regOv.style.zIndex = '300'; regOv.classList.remove('show'); if (ok) toast('Rostro actualizado correctamente', 'ok'); renderTabEmpleados(); };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    regStreamMain = stream;
+    document.getElementById('reg-video-main').srcObject = stream;
+    if (!modelsLoaded) { document.getElementById('reg-capture-err').textContent = 'Cargando modelos...'; await cargarModelos(); }
+    document.getElementById('reg-capture-err').textContent = 'Coloca la cara en el círculo y presiona Capturar';
+    document.getElementById('reg-capture-btn').disabled = false;
+  } catch(e) { document.getElementById('reg-capture-err').textContent = 'Error al acceder a la cámara'; }
 }
 
-function abrirEditarPin(pin,nombre,odooId){
-  const c=document.getElementById('admin-content');
-  c.innerHTML=`<div class="section-title">Editar PIN</div>
-    <div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:16px">${nombre}</div>
-    <div class="form-dark"><div><label>Nuevo PIN</label><input type="text" id="edit-pin" value="${pin}" maxlength="6"/></div></div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn-ghost" onclick="renderTabEmpleados()">Cancelar</button>
-      <button class="btn-gold" onclick="guardarPinEditado('${pin}','${nombre.replace(/'/g,"\\'")}',${odooId})">💾 Guardar</button>
+function abrirEditarPin(pin, nombre, odooId) {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = `<div class="ac-title">Editar PIN</div>
+    <div style="font-size:13px;color:var(--gray-600);margin-bottom:16px">${nombre}</div>
+    <label class="ac-form-label">Nuevo PIN</label>
+    <input type="text" id="edit-pin" class="ac-form-input" value="${pin}" maxlength="6"/>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="ac-btn-secondary" onclick="renderTabEmpleados()">Cancelar</button>
+      <button class="ac-btn-primary" onclick="guardarPinEditado('${pin}','${nombre.replace(/'/g,"\\'")}',${odooId})">Guardar cambios</button>
     </div>`;
 }
 
-async function guardarPinEditado(pinViejo,nombre,odooId){
-  const nuevoPIN=document.getElementById('edit-pin').value.trim();
-  if(!nuevoPIN||nuevoPIN.length<4||isNaN(nuevoPIN)){toast('PIN inválido','err');return;}
-  try{
-    const r=await fetch(`${CONFIG.servidor}/admin/pin`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},body:JSON.stringify({odoo_id:odooId,nombre,pin:nuevoPIN})});
-    const d=await r.json();
-    if(d.ok){
-      if(nuevoPIN!==pinViejo) await fetch(`${CONFIG.servidor}/admin/pin/${pinViejo}`,{method:'DELETE',headers:{'x-admin-key':CONFIG.adminKey}});
-      toast('✅ PIN actualizado','ok'); empleadosAdmin=[]; renderTabEmpleados();
-    } else toast(d.error||'Error','err');
-  }catch(e){toast('Error de conexión','err');}
+async function guardarPinEditado(pinViejo, nombre, odooId) {
+  const nuevoPIN = document.getElementById('edit-pin').value.trim();
+  if (!nuevoPIN || nuevoPIN.length < 4 || isNaN(nuevoPIN)) { toast('PIN inválido', 'err'); return; }
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/pin`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey}, body: JSON.stringify({odoo_id:odooId, nombre, pin:nuevoPIN}) });
+    const d = await r.json();
+    if (d.ok) {
+      if (nuevoPIN !== pinViejo) await fetch(`${CONFIG.servidor}/admin/pin/${pinViejo}`, { method:'DELETE', headers:{'x-admin-key':CONFIG.adminKey} });
+      toast('PIN actualizado correctamente', 'ok'); empleadosAdmin = []; renderTabEmpleados();
+    } else toast(d.error || 'Error al guardar', 'err');
+  } catch(e) { toast('Error de conexión', 'err'); }
 }
 
-function abrirEliminar(pin,nombre){
-  const c=document.getElementById('admin-content');
-  c.innerHTML=`<div class="section-title">⚠️ Eliminar empleado</div>
-    <div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:12px">${nombre}</div>
-    <p style="font-size:13px;color:rgba(255,255,255,.8)">¿Seguro que quieres eliminar este empleado del sistema de ponche? Su historial en Odoo no se verá afectado.</p>
-    <div style="display:flex;gap:8px;margin-top:20px">
-      <button class="btn-ghost" onclick="renderTabEmpleados()">Cancelar</button>
-      <button class="btn-gold" style="background:var(--red)" onclick="confirmarEliminar('${pin}','${nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+function abrirEliminar(pin, nombre) {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = `<div class="ac-title">Eliminar empleado</div>
+    <div style="font-size:13px;color:var(--gray-600);margin-bottom:12px">${nombre}</div>
+    <div style="font-size:13px;color:var(--gray-900);line-height:1.6;background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:var(--radius);padding:14px">
+      ¿Confirmas que deseas eliminar a este empleado del sistema de ponche?<br/>
+      <span style="color:var(--gray-400);font-size:12px;margin-top:6px;display:block">Su historial de asistencia en Odoo no será afectado.</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="ac-btn-secondary" onclick="renderTabEmpleados()">Cancelar</button>
+      <button class="ac-btn-danger" onclick="confirmarEliminar('${pin}')">Eliminar del sistema</button>
     </div>`;
 }
 
-async function confirmarEliminar(pin,nombre){
-  try{
-    const r=await fetch(`${CONFIG.servidor}/admin/pin/${pin}`,{method:'DELETE',headers:{'x-admin-key':CONFIG.adminKey}});
-    const d=await r.json();
-    if(d.ok){toast('✅ Empleado eliminado','ok');empleadosAdmin=[];renderTabEmpleados();}
-    else toast(d.error||'Error','err');
-  }catch(e){toast('Error de conexión','err');}
+async function confirmarEliminar(pin) {
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/pin/${pin}`, { method:'DELETE', headers:{'x-admin-key':CONFIG.adminKey} });
+    const d = await r.json();
+    if (d.ok) { toast('Empleado eliminado', 'ok'); empleadosAdmin = []; renderTabEmpleados(); }
+    else toast(d.error || 'Error', 'err');
+  } catch(e) { toast('Error de conexión', 'err'); }
 }
 
 // ── TAB CONFIG ─────────────────────────────────────────────────────
-function renderTabConfig(){
-  const c=document.getElementById('admin-content');
-  c.innerHTML=`<div class="section-title">Configuración</div>
-    <div class="config-field"><label>URL del servidor</label><input type="url" id="cfg-url" value="${CONFIG.servidor}"/></div>
-    <div class="config-field"><label>Contraseña admin</label><input type="password" id="cfg-key" value="${CONFIG.adminKey}"/></div>
-    <button class="btn-gold" style="margin-top:8px" onclick="guardarConfig()">💾 Guardar</button>
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)">
-      <div style="font-size:11px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Accesos directos</div>
-      <a href="${CONFIG.servidor}/reporte" target="_blank" style="display:block;background:rgba(255,255,255,.06);border-radius:var(--radius);padding:12px;color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;margin-bottom:8px">📊 Reporte del día</a>
-    </div>
-    <div style="margin-top:12px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)">
-      <div style="font-size:11px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Seguridad</div>
-      <button onclick="revocarDispositivo()" style="width:100%;background:rgba(240,93,93,.15);color:var(--red);border:1px solid rgba(240,93,93,.3);border-radius:var(--radius);padding:12px;font-family:var(--font-body);font-size:12px;font-weight:600;cursor:pointer">🔒 Revocar autorización de este dispositivo</button>
-    </div>`;
+function renderTabConfig() {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = `<div class="ac-title">Configuración del sistema</div>
+    <label class="ac-form-label">URL del servidor</label>
+    <input type="url" id="cfg-url" class="ac-form-input" value="${CONFIG.servidor}"/>
+    <label class="ac-form-label">Contraseña admin</label>
+    <input type="password" id="cfg-key" class="ac-form-input" value="${CONFIG.adminKey}"/>
+    <button class="ac-btn-primary" onclick="guardarConfig()">Guardar configuración</button>
+    <hr class="ac-divider"/>
+    <div class="ac-section-label">Accesos directos</div>
+    <a href="${CONFIG.servidor}/reporte" target="_blank" class="ac-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Reporte del día
+    </a>
+    <hr class="ac-divider"/>
+    <div class="ac-section-label">Seguridad del dispositivo</div>
+    <button class="ac-btn-danger" onclick="revocarDispositivo()">Revocar autorización de este dispositivo</button>`;
 }
 
-function guardarConfig(){
-  const url=document.getElementById('cfg-url').value.trim().replace(/\/$/,'');
-  const key=document.getElementById('cfg-key').value.trim();
-  if(!url||!key){toast('Completa todos los campos','err');return;}
-  CONFIG={servidor:url,adminKey:key};
-  localStorage.setItem('kp_servidor',url);
-  localStorage.setItem('kp_adminKey',key);
-  toast('✅ Configuración guardada','ok');
+function guardarConfig() {
+  const url = document.getElementById('cfg-url').value.trim().replace(/\/$/,'');
+  const key = document.getElementById('cfg-key').value.trim();
+  if (!url || !key) { toast('Completa todos los campos', 'err'); return; }
+  CONFIG = {servidor:url, adminKey:key};
+  localStorage.setItem('kp_servidor', url);
+  localStorage.setItem('kp_adminKey', key);
+  toast('Configuración guardada', 'ok');
 }
 
-function revocarDispositivo(){
-  if(confirm('¿Revocar autorización de este dispositivo?')){
+function revocarDispositivo() {
+  if (confirm('¿Revocar la autorización de este dispositivo?')) {
     localStorage.removeItem('kp_device_auth');
     cerrarAdmin();
     location.reload();
@@ -936,12 +1784,16 @@ function revocarDispositivo(){
 }
 
 // ══ TOAST ══════════════════════════════════════════════════════════
-let toastT=null;
-function toast(msg,tipo=''){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.className=`toast show ${tipo}`;
-  if(toastT) clearTimeout(toastT);
-  toastT=setTimeout(()=>el.classList.remove('show'),3000);
+let toastT = null;
+function toast(msg, tipo='') {
+  const okIcon  = '<polyline points="20 6 9 17 4 12"/>';
+  const errIcon = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+  const el = document.getElementById('toast');
+  document.getElementById('toast-icon').innerHTML = tipo === 'ok' ? okIcon : tipo === 'err' ? errIcon : '';
+  document.getElementById('toast-msg').textContent = msg;
+  el.className = `toast show ${tipo}`;
+  if (toastT) clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 3000);
 }
 </script>
 </body>
