@@ -83,6 +83,11 @@ function inicioDiaUTC() {
   return `${y}-${m}-${day} 04:00:00`;
 }
 
+// ── DESCRIPTORES FACIALES ────────────────────────────────────────────────────
+// Guardados en memoria. Al reiniciar se pierden — el kiosko los recarga automáticamente.
+// Los descriptores son arrays de 128 números Float32 (~512 bytes c/u)
+let descriptoresFaciales = {};
+
 // ── AUTO-CARGA PINES ──────────────────────────────────────────────────────────
 function fetchURL(url) {
   return new Promise((resolve, reject) => {
@@ -275,6 +280,42 @@ app.post('/admin/verificar', (req,res) => {
 });
 app.get('/reporte', (req,res) => res.sendFile(__dirname + '/reporte.html'));
 app.get('/admin-panel', (req,res) => res.sendFile(__dirname + '/admin-panel.html'));
+
+// ── FACIAL: guardar descriptor ─────────────────────────────────────────────
+app.post('/admin/facial/guardar', requireAdmin, (req,res) => {
+  const {pin, descriptor, nombre} = req.body;
+  if(!pin || !descriptor || !Array.isArray(descriptor)) {
+    return res.status(400).json({error:'Faltan datos: pin y descriptor (array)'});
+  }
+  descriptoresFaciales[pin] = {descriptor, nombre, updated_at: new Date().toISOString()};
+  console.log(`[FACIAL] Descriptor guardado: ${nombre||pin}`);
+  res.json({ok:true, mensaje:`Descriptor de ${nombre||pin} guardado`});
+});
+
+// ── FACIAL: obtener descriptor de un empleado ──────────────────────────────
+app.get('/admin/facial/:pin', requireAdmin, (req,res) => {
+  const {pin} = req.params;
+  const data = descriptoresFaciales[pin];
+  if(!data) return res.status(404).json({ok:false, error:'Sin descriptor registrado'});
+  res.json({ok:true, pin, descriptor: data.descriptor, nombre: data.nombre, updated_at: data.updated_at});
+});
+
+// ── FACIAL: obtener todos los pins con descriptor ──────────────────────────
+app.get('/admin/facial', requireAdmin, (req,res) => {
+  const lista = Object.entries(descriptoresFaciales).map(([pin, d]) => ({
+    pin, nombre: d.nombre, updated_at: d.updated_at
+  }));
+  res.json({total: lista.length, empleados: lista});
+});
+
+// ── FACIAL: eliminar descriptor ────────────────────────────────────────────
+app.delete('/admin/facial/:pin', requireAdmin, (req,res) => {
+  const {pin} = req.params;
+  if(!descriptoresFaciales[pin]) return res.status(404).json({error:'Sin descriptor'});
+  const nombre = descriptoresFaciales[pin].nombre;
+  delete descriptoresFaciales[pin];
+  res.json({ok:true, mensaje:`Descriptor de ${nombre||pin} eliminado`});
+});
 
 // ── ESTADO DEL EMPLEADO (para que el kiosko sepa qué botón mostrar) ───────────
 app.post('/estado', async (req,res) => {
