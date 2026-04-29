@@ -400,11 +400,35 @@ let CONFIG={
   sucursal:localStorage.getItem('kp_sucursal')||'',
   adminKey:localStorage.getItem('kp_adminKey')||'',
 };
-let descriptoresFaciales=JSON.parse(localStorage.getItem('kp_descriptores')||'{}');
-Object.keys(descriptoresFaciales).forEach(k=>{
-  if(!(descriptoresFaciales[k] instanceof Float32Array))
-    descriptoresFaciales[k]=new Float32Array(Object.values(descriptoresFaciales[k]));
-});
+let descriptoresFaciales={};
+
+// Cargar descriptor de un empleado desde el servidor (cache local por sesión)
+async function getDescriptor(pin){
+  if(descriptoresFaciales[pin]) return descriptoresFaciales[pin];
+  try{
+    const r=await fetch(`${CONFIG.servidor}/admin/facial/${pin}`,{headers:{'x-admin-key':CONFIG.adminKey}});
+    if(!r.ok) return null;
+    const d=await r.json();
+    if(d.ok && d.descriptor){
+      descriptoresFaciales[pin]=new Float32Array(d.descriptor);
+      return descriptoresFaciales[pin];
+    }
+  }catch(e){}
+  return null;
+}
+
+// Guardar descriptor en el servidor
+async function guardarDescriptorServidor(pin, descriptor, nombre){
+  try{
+    const r=await fetch(`${CONFIG.servidor}/admin/facial/guardar`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+      body:JSON.stringify({pin, descriptor:Array.from(descriptor), nombre})
+    });
+    const d=await r.json();
+    return d.ok;
+  }catch(e){ return false; }
+}
 let modelsLoaded=false;
 const ACCIONES={
   sin_entrada:     {key:'entrada',         emoji:'🟢',label:'ENTRADA REGISTRADA',  clase:'entrada'},
@@ -526,8 +550,9 @@ async function consultarEstado(){
     if(d.estado==='salio'){mostrarResultado('✅',d.nombre,'JORNADA COMPLETADA','salida_final',4,'');resetPIN();return;}
     const pinTemp=pin,nombreTemp=d.nombre,estadoTemp=d.estado;
     btn.classList.remove('loading');procesando=false;
-    if(descriptoresFaciales[pinTemp]){
-      const ok=await verificarRostro(pinTemp,nombreTemp);
+    const descriptor=await getDescriptor(pinTemp);
+    if(descriptor){
+      const ok=await verificarRostro(pinTemp,nombreTemp,descriptor);
       if(!ok){resetPIN();return;}
     }else{
       await flujoRegistroFacial(pinTemp,nombreTemp);
@@ -540,7 +565,7 @@ async function consultarEstado(){
 // VERIFICACIÓN FACIAL
 // ══════════════════════════════════════════════════════════════════
 let streamActivo=null;
-async function verificarRostro(pinEmp,nombre){
+async function verificarRostro(pinEmp,nombre,descriptor){
   return new Promise(async resolve=>{
     const ov=document.getElementById('cam-overlay');
     const status=document.getElementById('cam-status');
@@ -554,7 +579,6 @@ async function verificarRostro(pinEmp,nombre){
       await new Promise(r=>video.onloadedmetadata=r);
       if(!modelsLoaded){status.textContent='Cargando IA...';await cargarModelos();}
       status.textContent='Mirá directo a la cámara 👁️';
-      const descriptor=descriptoresFaciales[pinEmp];
       const matcher=new faceapi.FaceMatcher([new faceapi.LabeledFaceDescriptors(pinEmp,[descriptor])],0.5);
       let intentos=0;
       const iv=setInterval(async()=>{
@@ -623,11 +647,18 @@ async function capturarDescriptor(){
     const video=document.getElementById('reg-video');
     const det=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true).withFaceDescriptor();
     if(!det){msg.textContent='No se detectó rostro. Intenta de nuevo.';msg.className='reg-msg err';btn.disabled=false;return;}
-    descriptoresFaciales[pinEmp]=det.descriptor;
-    const plain={};det.descriptor.forEach((v,i)=>plain[i]=v);
-    const stored=JSON.parse(localStorage.getItem('kp_descriptores')||'{}');
-    stored[pinEmp]=plain;localStorage.setItem('kp_descriptores',JSON.stringify(stored));
-    msg.textContent='✅ Rostro registrado exitosamente';msg.className='reg-msg ok';
+    // Guardar en servidor (disponible para todas las tablets)
+    const nombre=document.getElementById('reg-nombre').textContent;
+    const guardado=await guardarDescriptorServidor(pinEmp, det.descriptor, nombre);
+    if(guardado){
+      // Cache local para esta sesión
+      descriptoresFaciales[pinEmp]=det.descriptor;
+      msg.textContent='✅ Rostro registrado y sincronizado';msg.className='reg-msg ok';
+    }else{
+      // Guardar solo local si el servidor falla
+      descriptoresFaciales[pinEmp]=det.descriptor;
+      msg.textContent='⚠️ Guardado localmente (sin conexión)';msg.className='reg-msg ok';
+    }
     setTimeout(()=>{cerrarRegistro();if(regResolve){regResolve(true);regResolve=null;}},1500);
   }catch(e){msg.textContent='Error: '+e.message;msg.className='reg-msg err';btn.disabled=false;}
 }
@@ -808,9 +839,19 @@ async function renderTabEmpleados(filtro=''){
   if(!empleadosAdmin.length){
     c.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.4)">⏳ Cargando...</div>';
     try{
-      const r=await fetch(`${CONFIG.servidor}/admin/empleados`,{headers:{'x-admin-key':CONFIG.adminKey}});
-      const d=await r.json();
-      empleadosAdmin=d.empleados||[];
+      const [re, rf] = await Promise.all([
+        fetch(`${CONFIG.servidor}/admin/empleados`,{headers:{'x-admin-key':CONFIG.adminKey}}),
+        fetch(`${CONFIG.servidor}/admin/facial`,{headers:{'x-admin-key':CONFIG.adminKey}})
+      ]);
+      const de=await re.json();
+      empleadosAdmin=de.empleados||[];
+      // Cargar qué pins tienen descriptor en el servidor
+      if(rf.ok){
+        const df=await rf.json();
+        (df.empleados||[]).forEach(e=>{
+          if(!descriptoresFaciales[e.pin]) descriptoresFaciales[e.pin]='cached';
+        });
+      }
     }catch(e){c.innerHTML='<div style="color:var(--red);padding:20px">Error de conexión</div>';return;}
   }
   const lista=filtro?empleadosAdmin.filter(e=>e.nombre.toLowerCase().includes(filtro.toLowerCase())||e.pin.includes(filtro)):empleadosAdmin;
@@ -912,11 +953,11 @@ function abrirEliminar(pin,nombre){
 }
 
 async function reregistrarRostro(pin, nombre){
-  // Borrar descriptor existente
+  // Borrar descriptor del servidor y cache local
   delete descriptoresFaciales[pin];
-  const stored = JSON.parse(localStorage.getItem('kp_descriptores')||'{}');
-  delete stored[pin];
-  localStorage.setItem('kp_descriptores', JSON.stringify(stored));
+  try{
+    await fetch(`${CONFIG.servidor}/admin/facial/${pin}`,{method:'DELETE',headers:{'x-admin-key':CONFIG.adminKey}});
+  }catch(e){}
 
   // El reg-overlay tiene z-index:160 y admin-overlay z-index:200
   // Necesitamos que reg-overlay esté POR ENCIMA del admin-overlay
