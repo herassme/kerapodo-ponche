@@ -332,9 +332,9 @@ app.post('/estado', async (req,res) => {
 
 // ── PONCHE PRINCIPAL ──────────────────────────────────────────────────────────
 app.post('/ponche', async (req,res) => {
-  const {pin, sucursal, accion} = req.body;
+  const {pin, accion} = req.body;
   // accion: 'entrada' | 'salida_almuerzo' | 'regreso_almuerzo' | 'salida_final'
-  if (!pin||!sucursal) return res.status(400).json({ok:false,error:'Falta PIN o sucursal'});
+  if (!pin) return res.status(400).json({ok:false,error:'Falta PIN'});
   if (Object.keys(empleadosPorPIN).length===0) await cargarPinesDesdeGitHub();
   const e = empleadosPorPIN[pin];
   if (!e) return res.status(404).json({ok:false,error:'PIN incorrecto'});
@@ -431,8 +431,8 @@ app.post('/ponche', async (req,res) => {
         return res.status(400).json({ok:false,error:'Acción no válida'});
     }
 
-    console.log(`[PONCHE] ${e.nombre} → ${accion.toUpperCase()} | ${sucursal} | ${horaRD}`);
-    return res.json({ok:true, accion, mensaje, nombre:e.nombre, sucursal, hora:horaRD, attendance_id, alertas});
+    console.log(`[PONCHE] ${e.nombre} → ${accion.toUpperCase()} | ${horaRD}`);
+    return res.json({ok:true, accion, mensaje, nombre:e.nombre, hora:horaRD, attendance_id, alertas});
 
   } catch(err) {
     console.error('[ERROR]',err.message);
@@ -515,6 +515,180 @@ app.get('/admin/reporte-hoy', requireAdmin, async (req,res) => {
 
     res.json({ fecha: inicioStr, horario, total: resumen.length, empleados: resumen });
   } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ── REPORTE POR RANGO ────────────────────────────────────────────────────────
+app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
+  try {
+    const { desde, hasta, empleado_id } = req.query;
+
+    function rdFechaAUTC(fechaRD, esInicio) {
+      const [y,m,d] = fechaRD.split('-').map(Number);
+      if (esInicio) return new Date(Date.UTC(y,m-1,d,4,0,0)).toISOString().replace('T',' ').substring(0,19);
+      else          return new Date(Date.UTC(y,m-1,d+1,3,59,59)).toISOString().replace('T',' ').substring(0,19);
+    }
+
+    const ahoraRDms = Date.now() - 4*3600000;
+    const hoyRD = new Date(ahoraRDms);
+    const hoyStr = `${hoyRD.getUTCFullYear()}-${String(hoyRD.getUTCMonth()+1).padStart(2,'0')}-${String(hoyRD.getUTCDate()).padStart(2,'0')}`;
+
+    const fechaDesde = desde || hoyStr;
+    const fechaHasta = hasta || hoyStr;
+    const desdeUTC   = rdFechaAUTC(fechaDesde, true);
+    const hastaUTC   = rdFechaAUTC(fechaHasta, false);
+
+    const filtro = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
+    if (empleado_id) filtro.push(['employee_id','=',parseInt(empleado_id)]);
+
+    const registros = await odooExecute('hr.attendance','search_read',
+      [filtro],
+      {fields:['employee_id','check_in','check_out'],order:'employee_id asc,check_in asc',limit:5000}
+    );
+
+    const regs = Array.isArray(registros) ? registros : [];
+
+    function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+    function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
+    function horaLocalRD(fechaUTC){
+      const d=new Date(fechaUTC.replace(' ','T')+'Z');
+      d.setHours(d.getHours()-4);
+      return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+    function diaStr(fechaUTC){
+      const d=new Date(fechaUTC.replace(' ','T')+'Z');
+      d.setHours(d.getHours()-4);
+      return d.toISOString().substring(0,10);
+    }
+    function esFinde(fechaUTC){
+      const d=new Date(fechaUTC.replace(' ','T')+'Z');
+      d.setHours(d.getHours()-4);
+      return [0,6].includes(d.getDay());
+    }
+
+    // Agrupar por empleado → por dia
+    const porEmp = {};
+    regs.forEach(r => {
+      if (!r.employee_id || !r.check_in) return;
+      const id     = Array.isArray(r.employee_id) ? r.employee_id[0] : r.employee_id;
+      const nombre = Array.isArray(r.employee_id) ? r.employee_id[1] : '?';
+      if (!porEmp[id]) porEmp[id] = { id, nombre, dias:{} };
+      const dia = diaStr(r.check_in);
+      if (!porEmp[id].dias[dia]) porEmp[id].dias[dia] = [];
+      porEmp[id].dias[dia].push(r);
+    });
+
+    const resumen = Object.values(porEmp).map(emp => {
+      let totalMin=0, totalDesc=0, totalBanco=0;
+      let diasTrabajados=0, diasTarde=0, diasSinAlmuerzo=0, diasExceso=0;
+      const detalleDias = [];
+
+      Object.entries(emp.dias).forEach(([dia, regsD]) => {
+        const finde = regsD[0] && esFinde(regsD[0].check_in);
+        const horario = finde
+          ? { entrada:'09:00', salida:'15:00', extraDesde:'15:30', almuerzo:60 }
+          : { entrada:'09:00', salida:'18:00', extraDesde:'18:30', almuerzo:60 };
+
+        // Primer y último registro del día
+        const primero = regsD[0];
+        const ultimo  = regsD[regsD.length-1];
+        if (!primero.check_in) return;
+
+        const horaEntrada = horaLocalRD(primero.check_in);
+        const horaSalida  = ultimo.check_out ? horaLocalRD(ultimo.check_out) : null;
+
+        const minEntrada  = horaAMin(horaEntrada);
+        const minPermitido = horaAMin(horario.entrada);
+        const minSalida   = horaSalida ? horaAMin(horaSalida) : null;
+        const minExtraDesde = horaAMin(horario.extraDesde);
+
+        // Calcular minutos trabajados (suma de todos los bloques)
+        let minTrabajoD = 0;
+        regsD.forEach(r => {
+          if (r.check_in && r.check_out) {
+            const ini = new Date(r.check_in.replace(' ','T')+'Z').getTime();
+            const fin = new Date(r.check_out.replace(' ','T')+'Z').getTime();
+            minTrabajoD += Math.round((fin - ini) / 60000);
+          }
+        });
+
+        // Descuentos y banco
+        const descTarde   = minEntrada > minPermitido ? minEntrada - minPermitido : 0;
+        const bancoExtra  = minSalida && minSalida > minExtraDesde ? minSalida - minExtraDesde : 0;
+        const tieneAlm    = regsD.length > 1;
+
+        // Exceso almuerzo (si hay 2+ registros, calcular gap)
+        let excesAlm = 0;
+        if (regsD.length >= 2 && regsD[0].check_out && regsD[1].check_in) {
+          const finBloque1 = new Date(regsD[0].check_out.replace(' ','T')+'Z').getTime();
+          const iniBloque2 = new Date(regsD[1].check_in.replace(' ','T')+'Z').getTime();
+          const minAlm = Math.round((iniBloque2 - finBloque1) / 60000);
+          if (minAlm > horario.almuerzo) excesAlm = minAlm - horario.almuerzo;
+        }
+
+        const descTotal = descTarde + excesAlm;
+        totalMin   += minTrabajoD;
+        totalDesc  += descTotal;
+        totalBanco += bancoExtra;
+        diasTrabajados++;
+        if (descTarde > 0)  diasTarde++;
+        if (!tieneAlm)      diasSinAlmuerzo++;
+        if (excesAlm > 0)   diasExceso++;
+
+        detalleDias.push({
+          dia,
+          hora_entrada: horaEntrada,
+          hora_salida:  horaSalida || '—',
+          minutos_trabajados: minTrabajoD,
+          horas_fmt:    minAHora(minTrabajoD),
+          desc_tarde:   descTarde,
+          desc_exceso:  excesAlm,
+          banco_extra:  bancoExtra,
+          sin_almuerzo: !tieneAlm,
+          es_finde:     finde,
+        });
+      });
+
+      const puntualidad = diasTrabajados > 0 ? Math.round(((diasTrabajados - diasTarde) / diasTrabajados) * 100) : 100;
+
+      return {
+        id: emp.id, nombre: emp.nombre,
+        dias_trabajados:  diasTrabajados,
+        total_minutos:    totalMin,
+        horas_totales:    minAHora(totalMin),
+        total_descuentos: totalDesc,
+        desc_fmt:         totalDesc > 0 ? `-${minAHora(totalDesc)}` : '—',
+        total_banco:      totalBanco,
+        banco_fmt:        totalBanco > 0 ? `+${minAHora(totalBanco)}` : '—',
+        horas_efectivas:  minAHora(Math.max(0, totalMin - totalDesc)),
+        puntualidad,
+        dias_tarde:       diasTarde,
+        dias_sin_almuerzo: diasSinAlmuerzo,
+        dias_exceso_alm:  diasExceso,
+        detalle_dias:     detalleDias,
+        // Alertas
+        alertas: [
+          ...(diasTarde >= 3       ? [`Llegó tarde ${diasTarde} días en el período`] : []),
+          ...(diasSinAlmuerzo >= 2 ? [`Sin registro de almuerzo ${diasSinAlmuerzo} días`] : []),
+          ...(diasExceso >= 2      ? [`Exceso de almuerzo ${diasExceso} días`] : []),
+          ...(puntualidad < 80     ? [`Puntualidad por debajo del 80%`] : []),
+        ]
+      };
+    });
+
+    // KPIs globales
+    const kpis = {
+      total_empleados: resumen.length,
+      promedio_horas:  resumen.length ? Math.round(resumen.reduce((a,e)=>a+e.total_minutos,0)/resumen.length) : 0,
+      empleados_tarde: resumen.filter(e=>e.dias_tarde>0).length,
+      empleados_alerta: resumen.filter(e=>e.alertas.length>0).length,
+      puntualidad_promedio: resumen.length ? Math.round(resumen.reduce((a,e)=>a+e.puntualidad,0)/resumen.length) : 100,
+    };
+
+    res.json({ ok:true, desde:fechaDesde, hasta:fechaHasta, kpis, empleados:resumen });
+  } catch(e) {
+    console.error('[REPORTE RANGO]', e.message);
+    res.status(500).json({error:e.message});
+  }
 });
 
 // ── RUTAS ADMIN BÁSICAS ───────────────────────────────────────────────────────
