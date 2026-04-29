@@ -1569,43 +1569,258 @@ function adminTab(tab) {
   else if (tab === 'config')    renderTabConfig();
 }
 
-// ── TAB REPORTE ────────────────────────────────────────────────────
-async function renderTabReporte() {
-  const c = document.getElementById('admin-content');
-  c.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:13px">Cargando reporte...</div>';
-  try {
-    const r = await fetch(`${CONFIG.servidor}/admin/reporte-hoy`, { headers:{'x-admin-key':CONFIG.adminKey} });
-    const d = await r.json();
-    if (d.error) { c.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;font-size:13px">${d.error}</div>`; return; }
-    const emps = d.empleados || [];
-    const conDesc = emps.filter(e => (e.descuentoTarde + e.excesosAlmuerzo) > 0).length;
-    const sinAlm  = emps.filter(e => e.sin_almuerzo).length;
-    let html = `<div class="ac-title">Hoy · ${emps.length} presentes</div>
-      <div class="ac-stat-row">
-        <div class="ac-stat"><div class="ac-stat-num">${emps.length}</div><div class="ac-stat-lbl">Presentes</div></div>
-        <div class="ac-stat"><div class="ac-stat-num r">${conDesc}</div><div class="ac-stat-lbl">Descuentos</div></div>
-        <div class="ac-stat"><div class="ac-stat-num a">${sinAlm}</div><div class="ac-stat-lbl">Sin almuerzo</div></div>
-      </div>`;
-    if (!emps.length) html += '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">No hay registros de asistencia hoy</div>';
-    else emps.forEach(e => {
-      const desc = e.descuentoTarde + e.excesosAlmuerzo;
-      const badges = [];
-      if (e.sin_almuerzo)       badges.push('<span class="rep-badge warn">Sin almuerzo</span>');
-      if (e.descuentoTarde > 0) badges.push(`<span class="rep-badge bad">Tarde ${e.descuentoTarde}min</span>`);
-      if (e.excesosAlmuerzo > 0) badges.push(`<span class="rep-badge bad">Exceso ${e.excesosAlmuerzo}min</span>`);
-      if (e.bancoExtra > 0)     badges.push(`<span class="rep-badge ok">+${e.bancoExtra}min extra</span>`);
-      if (!e.sin_almuerzo && desc === 0 && e.bancoExtra === 0) badges.push('<span class="rep-badge ok">Sin novedad</span>');
-      html += `<div class="rep-item"><div class="rep-name">${e.nombre}</div><div class="rep-badges">${badges.join('')}</div>
-        <div class="rep-stats">
-          <div class="rep-stat"><div class="rep-stat-val">${minAHora(e.minutosTrabajados)}</div><div class="rep-stat-lbl">Trabajadas</div></div>
-          <div class="rep-stat"><div class="rep-stat-val" style="color:${desc>0?'var(--red)':'var(--gray-400)'}">${desc>0?'-'+desc+'min':'—'}</div><div class="rep-stat-lbl">Descuento</div></div>
-          <div class="rep-stat"><div class="rep-stat-val" style="color:${e.bancoExtra>0?'var(--sky)':'var(--gray-400)'}">${e.bancoExtra>0?'+'+e.bancoExtra+'min':'—'}</div><div class="rep-stat-lbl">Banco</div></div>
-          <div class="rep-stat"><div class="rep-stat-val" style="color:var(--green)">${e.horas_efectivas_fmt}</div><div class="rep-stat-lbl">Efectivas</div></div>
-        </div></div>`;
-    });
-    c.innerHTML = html;
-  } catch(e) { c.innerHTML = '<div style="color:var(--red);padding:20px;text-align:center;font-size:13px">Error de conexión</div>'; }
+// ══ MÓDULO DE REPORTES ════════════════════════════════════════════
+let reporteState = { periodo:'hoy', desde:null, hasta:null, empleadoId:null, datos:null, expandidos:{} };
+
+function renderTabReporte() {
+  const hoy = new Date(); hoy.setHours(hoy.getHours()-4);
+  const hoyStr = `${hoy.getUTCFullYear()}-${String(hoy.getUTCMonth()+1).padStart(2,'0')}-${String(hoy.getUTCDate()).padStart(2,'0')}`;
+  reporteState.desde = hoyStr; reporteState.hasta = hoyStr;
+  renderReportePantalla();
 }
+
+function renderReportePantalla() {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = `
+  <style>
+    .rp-periodo-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+    .rp-btn-periodo{border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);border-radius:20px;padding:6px 14px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+    .rp-btn-periodo.active{background:var(--blue);border-color:var(--blue);color:white}
+    .rp-rango{display:none;gap:8px;margin-bottom:12px;align-items:center}
+    .rp-rango.show{display:flex}
+    .rp-rango input{flex:1;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;color:var(--gray-900)}
+    .rp-rango input:focus{border-color:var(--blue)}
+    .rp-kpi-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+    .rp-kpi{background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:12px;padding:14px 12px;text-align:center}
+    .rp-kpi-val{font-family:'DM Serif Display',serif;font-size:28px;color:var(--gray-900);line-height:1}
+    .rp-kpi-val.g{color:var(--green)}
+    .rp-kpi-val.r{color:var(--red)}
+    .rp-kpi-val.a{color:var(--amber)}
+    .rp-kpi-val.b{color:var(--blue)}
+    .rp-kpi-lbl{font-size:10px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+    .rp-emp-row{border:1.5px solid var(--gray-100);border-radius:12px;margin-bottom:6px;overflow:hidden;transition:border-color .2s}
+    .rp-emp-row:hover{border-color:var(--gray-200)}
+    .rp-emp-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+    .rp-emp-av{width:32px;height:32px;border-radius:50%;background:var(--blue-pale);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0}
+    .rp-emp-name{flex:1;font-size:13px;font-weight:600;color:var(--gray-900)}
+    .rp-emp-horas{font-family:'DM Serif Display',serif;font-size:15px;color:var(--gray-900)}
+    .rp-emp-chevron{color:var(--gray-400);transition:transform .2s;font-size:12px}
+    .rp-emp-chevron.open{transform:rotate(180deg)}
+    .rp-emp-alerta{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
+    .rp-emp-detail{display:none;padding:0 14px 12px;border-top:1px solid var(--gray-100)}
+    .rp-emp-detail.show{display:block}
+    .rp-mini-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;padding-top:10px}
+    .rp-mini-stat{text-align:center}
+    .rp-mini-val{font-size:14px;font-weight:600;color:var(--gray-900)}
+    .rp-mini-lbl{font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em}
+    .rp-alerta-item{display:flex;align-items:center;gap:6px;background:var(--amber-pale);color:var(--amber);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:500;margin-bottom:4px}
+    .rp-dia-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+    .rp-dia-table th{color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;text-align:left;font-weight:500;border-bottom:1px solid var(--gray-100)}
+    .rp-dia-table td{padding:5px 6px;border-bottom:1px solid var(--gray-50);color:var(--gray-600)}
+    .rp-dia-table tr:last-child td{border-bottom:none}
+    .rp-dia-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+    .rp-csv-btn{display:flex;align-items:center;gap:6px;background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;color:var(--gray-600);cursor:pointer;transition:all .15s;margin-top:10px;width:100%;justify-content:center}
+    .rp-csv-btn:hover{background:var(--gray-100);border-color:var(--gray-200)}
+    .rp-csv-btn svg{width:14px;height:14px;color:var(--green)}
+    .rp-search{width:100%;border:1.5px solid var(--gray-100);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;color:var(--gray-900);background:var(--gray-50);margin-bottom:10px}
+    .rp-search:focus{border-color:var(--blue);background:white}
+    .rp-empty{text-align:center;padding:32px 16px;color:var(--gray-400);font-size:13px}
+  </style>
+
+  <div class="ac-title">Reportes de asistencia</div>
+
+  <!-- Selector de período -->
+  <div class="rp-periodo-btns" id="rp-periodos">
+    <button class="rp-btn-periodo active" onclick="setPeriodo('hoy',this)">Hoy</button>
+    <button class="rp-btn-periodo" onclick="setPeriodo('7d',this)">7 días</button>
+    <button class="rp-btn-periodo" onclick="setPeriodo('30d',this)">30 días</button>
+    <button class="rp-btn-periodo" onclick="setPeriodo('mes',this)">Este mes</button>
+    <button class="rp-btn-periodo" onclick="setPeriodo('custom',this)">Personalizado</button>
+  </div>
+
+  <!-- Rango personalizado -->
+  <div class="rp-rango" id="rp-rango-custom">
+    <input type="date" id="rp-desde" onchange="aplicarRangoCustom()"/>
+    <span style="color:var(--gray-400);font-size:12px">→</span>
+    <input type="date" id="rp-hasta" onchange="aplicarRangoCustom()"/>
+  </div>
+
+  <!-- KPIs -->
+  <div id="rp-kpis" class="rp-kpi-row" style="display:none"></div>
+
+  <!-- Botón cargar -->
+  <button id="rp-cargar-btn" class="ac-btn-primary" onclick="cargarReporteRango()" style="margin-bottom:12px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Ver reporte
+  </button>
+
+  <div id="rp-resultados"></div>
+  `;
+
+  // Preseleccionar fechas de hoy
+  const hoy = new Date(); hoy.setHours(hoy.getHours()-4);
+  const h = `${hoy.getUTCFullYear()}-${String(hoy.getUTCMonth()+1).padStart(2,'0')}-${String(hoy.getUTCDate()).padStart(2,'0')}`;
+  document.getElementById('rp-desde').value = h;
+  document.getElementById('rp-hasta').value = h;
+}
+
+function setPeriodo(tipo, btn) {
+  document.querySelectorAll('.rp-btn-periodo').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  reporteState.periodo = tipo;
+
+  const rango = document.getElementById('rp-rango-custom');
+  const hoy = new Date(); hoy.setHours(hoy.getHours()-4);
+  const h = `${hoy.getUTCFullYear()}-${String(hoy.getUTCMonth()+1).padStart(2,'0')}-${String(hoy.getUTCDate()).padStart(2,'0')}`;
+
+  if (tipo === 'custom') {
+    rango.classList.add('show');
+  } else {
+    rango.classList.remove('show');
+    let desde = h;
+    if (tipo === '7d') {
+      const d7 = new Date(hoy); d7.setUTCDate(d7.getUTCDate()-6);
+      desde = `${d7.getUTCFullYear()}-${String(d7.getUTCMonth()+1).padStart(2,'0')}-${String(d7.getUTCDate()).padStart(2,'0')}`;
+    } else if (tipo === '30d') {
+      const d30 = new Date(hoy); d30.setUTCDate(d30.getUTCDate()-29);
+      desde = `${d30.getUTCFullYear()}-${String(d30.getUTCMonth()+1).padStart(2,'0')}-${String(d30.getUTCDate()).padStart(2,'0')}`;
+    } else if (tipo === 'mes') {
+      const mes = new Date(hoy); mes.setUTCDate(1);
+      desde = `${mes.getUTCFullYear()}-${String(mes.getUTCMonth()+1).padStart(2,'0')}-01`;
+    }
+    reporteState.desde = desde;
+    reporteState.hasta = h;
+    document.getElementById('rp-desde').value = desde;
+    document.getElementById('rp-hasta').value = h;
+  }
+  // Limpiar resultados al cambiar período
+  document.getElementById('rp-resultados').innerHTML = '';
+  document.getElementById('rp-kpis').style.display = 'none';
+}
+
+function aplicarRangoCustom() {
+  reporteState.desde = document.getElementById('rp-desde').value;
+  reporteState.hasta = document.getElementById('rp-hasta').value;
+}
+
+async function cargarReporteRango() {
+  const btn = document.getElementById('rp-cargar-btn');
+  btn.textContent = 'Cargando...'; btn.disabled = true;
+
+  try {
+    let url = `${CONFIG.servidor}/admin/reporte-rango?desde=${reporteState.desde}&hasta=${reporteState.hasta}`;
+    if (reporteState.empleadoId) url += `&empleado_id=${reporteState.empleadoId}`;
+
+    const r = await fetch(url, { headers:{'x-admin-key':CONFIG.adminKey} });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    reporteState.datos = d;
+    renderReporteResultados(d);
+  } catch(e) {
+    document.getElementById('rp-resultados').innerHTML = `<div style="color:var(--red);font-size:13px;text-align:center;padding:20px">Error: ${e.message}</div>`;
+  }
+
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ver reporte';
+  btn.disabled = false;
+}
+
+function renderReporteResultados(d) {
+  const kpisEl = document.getElementById('rp-kpis');
+  kpisEl.style.display = 'grid';
+  kpisEl.innerHTML = `
+    <div class="rp-kpi"><div class="rp-kpi-val b">${d.kpis.total_empleados}</div><div class="rp-kpi-lbl">Empleados</div></div>
+    <div class="rp-kpi"><div class="rp-kpi-val ${d.kpis.puntualidad_promedio>=90?'g':d.kpis.puntualidad_promedio>=75?'a':'r'}">${d.kpis.puntualidad_promedio}%</div><div class="rp-kpi-lbl">Puntualidad</div></div>
+    <div class="rp-kpi"><div class="rp-kpi-val r">${d.kpis.empleados_tarde}</div><div class="rp-kpi-lbl">Con tardanza</div></div>
+    <div class="rp-kpi"><div class="rp-kpi-val a">${d.kpis.empleados_alerta}</div><div class="rp-kpi-lbl">Con alertas</div></div>
+  `;
+
+  const res = document.getElementById('rp-resultados');
+  if (!d.empleados.length) { res.innerHTML = '<div class="rp-empty">No hay registros en este período</div>'; return; }
+
+  let html = `
+    <input class="rp-search" placeholder="Buscar empleado..." oninput="filtrarReporte(this.value)"/>
+    <button class="rp-csv-btn" onclick="exportarCSV()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exportar CSV
+    </button>
+    <div id="rp-lista-emps">`;
+
+  d.empleados.forEach(e => { html += renderEmpReporte(e); });
+  html += '</div>';
+  res.innerHTML = html;
+}
+
+function renderEmpReporte(e) {
+  const tieneAlerta = e.alertas.length > 0;
+  const isExp = reporteState.expandidos[e.id];
+  let detalle = '';
+  if (isExp) {
+    detalle = `<div class="rp-emp-detail show">
+      <div class="rp-mini-stats">
+        <div class="rp-mini-stat"><div class="rp-mini-val">${e.dias_trabajados}</div><div class="rp-mini-lbl">Días</div></div>
+        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${e.total_descuentos>0?'var(--red)':'var(--gray-400)'}">${e.desc_fmt}</div><div class="rp-mini-lbl">Descuento</div></div>
+        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${e.total_banco>0?'var(--sky)':'var(--gray-400)'}">${e.banco_fmt}</div><div class="rp-mini-lbl">Banco</div></div>
+        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:var(--green)">${e.horas_efectivas}</div><div class="rp-mini-lbl">Efectivas</div></div>
+      </div>
+      ${e.alertas.map(a=>`<div class="rp-alerta-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>${a}</div>`).join('')}
+      <table class="rp-dia-table">
+        <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th></tr>
+        ${e.detalle_dias.map(d=>{
+          const badges=[];
+          if(d.desc_tarde>0)  badges.push(`<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">Tarde ${d.desc_tarde}m</span>`);
+          if(d.sin_almuerzo)  badges.push(`<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">Sin alm.</span>`);
+          if(d.desc_exceso>0) badges.push(`<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">+${d.desc_exceso}m alm.</span>`);
+          if(d.banco_extra>0) badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">+${d.banco_extra}m</span>`);
+          if(!badges.length)  badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">OK</span>`);
+          return `<tr><td>${d.dia.substring(5)}</td><td>${d.hora_entrada}</td><td>${d.hora_salida}</td><td style="font-weight:600;color:var(--gray-900)">${d.horas_fmt}</td><td>${badges.join(' ')}</td></tr>`;
+        }).join('')}
+      </table>
+    </div>`;
+  }
+  return `<div class="rp-emp-row" id="rprow-${e.id}">
+    <div class="rp-emp-header" onclick="toggleEmpReporte(${e.id})">
+      <div class="rp-emp-av">${e.nombre.charAt(0)}</div>
+      <div class="rp-emp-name">${e.nombre}</div>
+      ${tieneAlerta?'<div class="rp-emp-alerta"></div>':''}
+      <div class="rp-emp-horas">${e.horas_totales}</div>
+      <div class="rp-emp-chevron ${isExp?'open':''}">▾</div>
+    </div>
+    ${detalle}
+  </div>`;
+}
+
+function toggleEmpReporte(id) {
+  reporteState.expandidos[id] = !reporteState.expandidos[id];
+  const row = document.getElementById(`rprow-${id}`);
+  if (!row || !reporteState.datos) return;
+  const emp = reporteState.datos.empleados.find(e=>e.id===id);
+  if (emp) row.outerHTML = renderEmpReporte(emp);
+}
+
+function filtrarReporte(q) {
+  if (!reporteState.datos) return;
+  const lista = document.getElementById('rp-lista-emps');
+  if (!lista) return;
+  const filtrados = q
+    ? reporteState.datos.empleados.filter(e=>e.nombre.toLowerCase().includes(q.toLowerCase()))
+    : reporteState.datos.empleados;
+  lista.innerHTML = filtrados.map(e=>renderEmpReporte(e)).join('');
+}
+
+function exportarCSV() {
+  if (!reporteState.datos) return;
+  const rows = [['Empleado','Días','Horas Totales','Horas Efectivas','Descuentos','Banco Extra','Puntualidad %','Días Tarde','Días Sin Almuerzo','Alertas']];
+  reporteState.datos.empleados.forEach(e => {
+    rows.push([e.nombre,e.dias_trabajados,e.horas_totales,e.horas_efectivas,e.desc_fmt,e.banco_fmt,e.puntualidad+'%',e.dias_tarde,e.dias_sin_almuerzo,e.alertas.join(' | ')]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`kerapodo-reporte-${reporteState.desde}-${reporteState.hasta}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
 function minAHora(min) { if (!min) return '0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
 
 // ── TAB EMPLEADOS ──────────────────────────────────────────────────
