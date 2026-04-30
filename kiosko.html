@@ -1564,8 +1564,10 @@ async function adminLogin() {
 
 function adminTab(tab) {
   ['reporte','empleados','config'].forEach(t => document.getElementById(`atab-${t}`).classList.toggle('active', t === tab));
-  if (tab === 'reporte')    renderTabReporte();
-  else if (tab === 'empleados') renderTabEmpleados();
+  // Limpiar contenido anterior siempre
+  document.getElementById('admin-content').innerHTML = '';
+  if (tab === 'reporte')        renderTabReporte();
+  else if (tab === 'empleados') { empleadosAdmin = []; renderTabEmpleados(); }
   else if (tab === 'config')    renderTabConfig();
 }
 
