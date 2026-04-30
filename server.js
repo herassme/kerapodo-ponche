@@ -464,10 +464,13 @@ app.post('/ponche', async (req,res) => {
     let attendance_id, mensaje = '', alertas = [];
 
     // ── AUTO-DETECTAR: buscar si tiene entrada abierta en Odoo ──────────────
-    const abiertos = await odooExecute('hr.attendance','search_read',
-      [[['employee_id','=',e.odoo_id],['check_out','=',false]]],
-      {fields:['id','check_in'],order:'check_in desc',limit:1}
+    const xmlAbiertos = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [[['employee_id','=',e.odoo_id],['check_out','=',false]]],
+        {fields:['id','check_in'], order:'check_in desc', limit:1}
+      ]
     );
+    const abiertos = parseAttendanceXml(xmlAbiertos);
     const tieneAbierto = Array.isArray(abiertos) && abiertos.length > 0;
 
     if (!tieneAbierto) {
@@ -487,14 +490,15 @@ app.post('/ponche', async (req,res) => {
     } else {
       // ── SALIDA ─────────────────────────────────────────────────────────────
       const reg = abiertos[0];
+      const regId = parseInt(reg.id);
       const minSalida = horaAMinutos(horaRD);
       const minExtra  = horaAMinutos(horario.extraDesde);
       if (minSalida > minExtra) {
         const extra = minSalida - minExtra;
         alertas.push(`✅ Tiempo extra: ${extra} minutos acreditados`);
       }
-      await odooExecute('hr.attendance','write',[[reg.id],{check_out:ahora}]);
-      attendance_id = reg.id;
+      await odooExecute('hr.attendance','write',[[regId],{check_out:ahora}]);
+      attendance_id = regId;
       mensaje = 'SALIDA REGISTRADA';
     }
 
