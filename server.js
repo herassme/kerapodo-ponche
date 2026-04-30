@@ -258,12 +258,12 @@ function parseAttendanceXml(xml) {
         const val = strMatch ? strMatch[1] : valueContent.replace(/<\/?[^>]+>/g, '').trim();
         record.check_out = (val === 'false' || val === '0' || !val) ? false : val;
       } else if (name === 'employee_id') {
-        // Array [id, name]
+        // Array [id, name] — viene como <array><data><value><int>35</int></value><value><string>Nombre</string></value></data></array>
         const intMatch = valueContent.match(/<int>(.*?)<\/int>|<i4>(.*?)<\/i4>/);
-        const strMatch = valueContent.match(/<string>(.*?)<\/string>/g);
+        const strMatch = valueContent.match(/<string>(.*?)<\/string>/);
         if (intMatch) {
-          const empId = parseInt(intMatch[1] || intMatch[2]);
-          const empName = strMatch && strMatch[1] ? strMatch[1].replace(/<\/?[^>]+>/g,'') : '';
+          const empId   = parseInt(intMatch[1] || intMatch[2]);
+          const empName = strMatch ? strMatch[1] : '';
           record.employee_id = [empId, empName];
         }
       }
