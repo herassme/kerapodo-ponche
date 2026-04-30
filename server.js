@@ -281,6 +281,20 @@ app.post('/admin/verificar', (req,res) => {
 app.get('/reporte', (req,res) => res.sendFile(__dirname + '/reporte.html'));
 app.get('/admin-panel', (req,res) => res.sendFile(__dirname + '/admin-panel.html'));
 
+// ── DIAGNÓSTICO ODOO ─────────────────────────────────────────────────────────
+app.get('/admin/debug-odoo', requireAdmin, async (req,res) => {
+  try {
+    // Traer los últimos 5 registros de asistencia sin filtro
+    const regs = await odooExecute('hr.attendance','search_read',
+      [[]],
+      {fields:['employee_id','check_in','check_out'],order:'id desc',limit:5}
+    );
+    res.json({ok:true, total:regs.length, muestra:regs});
+  } catch(e) {
+    res.status(500).json({error:e.message});
+  }
+});
+
 // ── FACIAL: guardar descriptor ─────────────────────────────────────────────
 app.post('/admin/facial/guardar', requireAdmin, (req,res) => {
   const {pin, descriptor, nombre} = req.body;
