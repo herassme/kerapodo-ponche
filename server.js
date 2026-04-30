@@ -647,18 +647,15 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
     const dominio = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
     if (empleado_id) dominio.push(['employee_id','=',parseInt(empleado_id)]);
     
-    // Asegurar que tenemos UID
-    if (!odooUID) await odooLogin();
+    // Triple array como reporte-hoy que sí funciona: [[[cond1, cond2]]]
+    const raw = await odooExecute('hr.attendance','search_read',
+      [[dominio]],
+      {fields:['employee_id','check_in','check_out'], order:'employee_id asc,check_in asc', limit:5000}
+    );
     
-    const xmlRaw = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',[
-      ODOO_DB, odooUID, ODOO_PASS,
-      'hr.attendance', 'search_read',
-      [dominio],
-      {fields:['employee_id','check_in','check_out'], limit:5000}
-    ]);
-    
-    // Parsear XML manualmente extrayendo structs
-    const regs = parseAttendanceXml(xmlRaw);
+    let regs = [];
+    if (Array.isArray(raw)) regs = raw;
+    else if (raw && typeof raw === 'object' && raw.employee_id) regs = [raw];
     console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
