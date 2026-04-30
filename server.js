@@ -556,14 +556,14 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
     
-    // Pasar dominio como primer elemento del array de args (forma estándar Odoo XML-RPC)
+    // Mismo formato que getEstadoEmpleado que sí funciona
     const registros = await odooExecute('hr.attendance','search_read',
-      [[filtro], ['employee_id','check_in','check_out'], 0, 5000, 'employee_id asc, check_in asc'],
-      {}
+      [[filtro]],
+      {fields:['employee_id','check_in','check_out'], limit:5000}
     );
 
     const regs = Array.isArray(registros) ? registros : [];
-    console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
+    console.log('[REPORTE-RANGO] Registros encontrados:', regs.length, '| Tipo:', typeof registros, '| EsArray:', Array.isArray(registros));
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
