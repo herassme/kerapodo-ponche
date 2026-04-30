@@ -8,20 +8,56 @@ const cors    = require('cors');
 const https   = require('https');
 const http    = require('http');
 const { XMLParser } = require('fast-xml-parser');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // descriptores faciales son grandes
 
-const ODOO_URL  = process.env.ODOO_URL  || '';
-const ODOO_DB   = process.env.ODOO_DB   || 'prod';
-const ODOO_USER = process.env.ODOO_USER || '';
-const ODOO_PASS = process.env.ODOO_PASS || '';
-const ADMIN_KEY = process.env.ADMIN_KEY || 'admin-kerapodo-2026';
-const PORT      = process.env.PORT      || 3000;
-const PINES_URL = process.env.PINES_URL || 'https://raw.githubusercontent.com/herassme/kerapodo-ponche/main/pines.json';
+const ODOO_URL   = process.env.ODOO_URL   || '';
+const ODOO_DB    = process.env.ODOO_DB    || 'prod';
+const ODOO_USER  = process.env.ODOO_USER  || '';
+const ODOO_PASS  = process.env.ODOO_PASS  || '';
+const ADMIN_KEY  = process.env.ADMIN_KEY  || 'admin-kerapodo-2026';
+const PORT       = process.env.PORT       || 3000;
+const PINES_URL  = process.env.PINES_URL  || 'https://raw.githubusercontent.com/herassme/kerapodo-ponche/main/pines.json';
+const MONGO_URI  = process.env.MONGO_URI  || '';
 
 let empleadosPorPIN = {};
+
+// ── MONGODB ───────────────────────────────────────────────────────────────────
+let mongoDb = null;
+
+async function conectarMongo() {
+  if (!MONGO_URI) { console.warn('⚠️ MONGO_URI no configurado — descriptores solo en memoria'); return; }
+  try {
+    const client = new MongoClient(MONGO_URI);
+    await client.connect();
+    mongoDb = client.db('kerapodo');
+    console.log('✅ MongoDB conectado');
+    // Cargar descriptores en memoria al arrancar
+    const docs = await mongoDb.collection('descriptores').find({}).toArray();
+    docs.forEach(d => { descriptoresFaciales[d.pin] = { descriptor: d.descriptor, nombre: d.nombre, updated_at: d.updated_at }; });
+    console.log(`✅ ${docs.length} descriptores cargados desde MongoDB`);
+  } catch(e) { console.error('❌ MongoDB:', e.message); }
+}
+
+async function mongoGuardarDescriptor(pin, descriptor, nombre) {
+  if (!mongoDb) return;
+  await mongoDb.collection('descriptores').updateOne(
+    { pin },
+    { $set: { pin, descriptor, nombre, updated_at: new Date().toISOString() } },
+    { upsert: true }
+  );
+}
+
+async function mongoEliminarDescriptor(pin) {
+  if (!mongoDb) return;
+  await mongoDb.collection('descriptores').deleteOne({ pin });
+}
+
+// Cache en memoria (para velocidad)
+let descriptoresFaciales = {};
 
 // ── HORARIOS ──────────────────────────────────────────────────────────────────
 const HORARIOS = {
@@ -83,10 +119,7 @@ function inicioDiaUTC() {
   return `${y}-${m}-${day} 04:00:00`;
 }
 
-// ── DESCRIPTORES FACIALES ────────────────────────────────────────────────────
-// Guardados en memoria. Al reiniciar se pierden — el kiosko los recarga automáticamente.
-// Los descriptores son arrays de 128 números Float32 (~512 bytes c/u)
-let descriptoresFaciales = {};
+// ── DESCRIPTORES FACIALES — en memoria + MongoDB ──────────────────────────────
 
 // ── AUTO-CARGA PINES ──────────────────────────────────────────────────────────
 function fetchURL(url) {
@@ -406,12 +439,13 @@ app.get('/admin/debug-odoo', requireAdmin, async (req,res) => {
 });
 
 // ── FACIAL: guardar descriptor ─────────────────────────────────────────────
-app.post('/admin/facial/guardar', requireAdmin, (req,res) => {
+app.post('/admin/facial/guardar', requireAdmin, async (req,res) => {
   const {pin, descriptor, nombre} = req.body;
   if(!pin || !descriptor || !Array.isArray(descriptor)) {
     return res.status(400).json({error:'Faltan datos: pin y descriptor (array)'});
   }
   descriptoresFaciales[pin] = {descriptor, nombre, updated_at: new Date().toISOString()};
+  await mongoGuardarDescriptor(pin, descriptor, nombre);
   console.log(`[FACIAL] Descriptor guardado: ${nombre||pin}`);
   res.json({ok:true, mensaje:`Descriptor de ${nombre||pin} guardado`});
 });
@@ -433,11 +467,12 @@ app.get('/admin/facial', requireAdmin, (req,res) => {
 });
 
 // ── FACIAL: eliminar descriptor ────────────────────────────────────────────
-app.delete('/admin/facial/:pin', requireAdmin, (req,res) => {
+app.delete('/admin/facial/:pin', requireAdmin, async (req,res) => {
   const {pin} = req.params;
   if(!descriptoresFaciales[pin]) return res.status(404).json({error:'Sin descriptor'});
   const nombre = descriptoresFaciales[pin].nombre;
   delete descriptoresFaciales[pin];
+  await mongoEliminarDescriptor(pin);
   res.json({ok:true, mensaje:`Descriptor de ${nombre||pin} eliminado`});
 });
 
@@ -918,6 +953,7 @@ app.get('/admin/asistencias-hoy', requireAdmin, async (req,res) => {
 
 // ── ARRANQUE ──────────────────────────────────────────────────────────────────
 async function arrancar() {
+  await conectarMongo();
   await odooLogin();
   await cargarPinesDesdeGitHub();
   app.listen(PORT, () => {
