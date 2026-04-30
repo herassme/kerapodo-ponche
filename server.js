@@ -184,6 +184,74 @@ async function odooLogin() {
 }
 
 
+// Obtener XML raw de Odoo sin parsear
+function xmlrpcCallRaw(endpoint, method, params) {
+  return new Promise((resolve, reject) => {
+    const body = `<?xml version="1.0"?><methodCall><methodName>${method}</methodName><params>${params.map(p=>`<param><value>${toXmlValue(p)}</value></param>`).join('')}</params></methodCall>`;
+    const url = new URL(ODOO_URL + endpoint);
+    const isHttps = url.protocol === 'https:';
+    const lib = isHttps ? require('https') : require('http');
+    const options = { hostname:url.hostname, port:url.port||(isHttps?443:80), path:url.pathname, method:'POST', headers:{'Content-Type':'text/xml','Content-Length':Buffer.byteLength(body)} };
+    const req = lib.request(options, res => {
+      let data='';
+      res.on('data', c => data+=c);
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.write(body); req.end();
+  });
+}
+
+// Parsear XML de respuesta de hr.attendance.search_read manualmente
+function parseAttendanceXml(xml) {
+  if (!xml || typeof xml !== 'string') return [];
+  const results = [];
+  
+  // Extraer todos los structs (cada uno es un registro)
+  const structRegex = /<struct>([\s\S]*?)<\/struct>/g;
+  let structMatch;
+  
+  while ((structMatch = structRegex.exec(xml)) !== null) {
+    const structContent = structMatch[1];
+    const record = {};
+    
+    // Extraer members
+    const memberRegex = /<member>\s*<name>(.*?)<\/name>\s*<value>([\s\S]*?)<\/value>\s*<\/member>/g;
+    let memberMatch;
+    
+    while ((memberMatch = memberRegex.exec(structContent)) !== null) {
+      const name = memberMatch[1].trim();
+      const valueContent = memberMatch[2].trim();
+      
+      if (name === 'id') {
+        record.id = parseInt(valueContent.replace(/<\/?[^>]+>/g, '')) || 0;
+      } else if (name === 'check_in') {
+        const strMatch = valueContent.match(/<string>(.*?)<\/string>/);
+        record.check_in = strMatch ? strMatch[1] : (valueContent.includes('false') ? null : valueContent.replace(/<\/?[^>]+>/g, '').trim());
+      } else if (name === 'check_out') {
+        const strMatch = valueContent.match(/<string>(.*?)<\/string>/);
+        const val = strMatch ? strMatch[1] : valueContent.replace(/<\/?[^>]+>/g, '').trim();
+        record.check_out = (val === 'false' || val === '0' || !val) ? false : val;
+      } else if (name === 'employee_id') {
+        // Array [id, name]
+        const intMatch = valueContent.match(/<int>(.*?)<\/int>|<i4>(.*?)<\/i4>/);
+        const strMatch = valueContent.match(/<string>(.*?)<\/string>/g);
+        if (intMatch) {
+          const empId = parseInt(intMatch[1] || intMatch[2]);
+          const empName = strMatch && strMatch[1] ? strMatch[1].replace(/<\/?[^>]+>/g,'') : '';
+          record.employee_id = [empId, empName];
+        }
+      }
+    }
+    
+    if (record.id && record.employee_id) {
+      results.push(record);
+    }
+  }
+  
+  return results;
+}
+
 async function odooExecute(model,method,args,kwargs={}) {
   if (!odooUID) await odooLogin();
   if (!odooUID) throw new Error('Sin Odoo: '+odooAuthError);
@@ -575,25 +643,22 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
     
-    // Usar mismo método que reporte-hoy pero con rango de fechas
+    // Parsear XML directamente para evitar problemas con fast-xml-parser y arrays
     const dominio = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
     if (empleado_id) dominio.push(['employee_id','=',parseInt(empleado_id)]);
     
-    const raw = await odooExecute('hr.attendance','search_read',
-      [[dominio]],
-      {fields:['employee_id','check_in','check_out'], limit:5000}
-    );
+    // Asegurar que tenemos UID
+    if (!odooUID) await odooLogin();
     
-    // Normalizar: puede venir como array, objeto único, o null
-    let regs = [];
-    if (Array.isArray(raw)) {
-      regs = raw;
-    } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      // Un solo registro viene como objeto
-      if (raw.id || raw.employee_id) {
-        regs = [raw];
-      }
-    }
+    const xmlRaw = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',[
+      ODOO_DB, odooUID, ODOO_PASS,
+      'hr.attendance', 'search_read',
+      [dominio],
+      {fields:['employee_id','check_in','check_out'], limit:5000}
+    ]);
+    
+    // Parsear XML manualmente extrayendo structs
+    const regs = parseAttendanceXml(xmlRaw);
     console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
