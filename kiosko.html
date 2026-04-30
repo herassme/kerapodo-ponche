@@ -1530,7 +1530,7 @@ function mostrarResultado(svgPath, nombre, badge, tipo, seg, hora, alertas=[]) {
 document.getElementById('overlay').addEventListener('click', () => { document.getElementById('overlay').classList.remove('show'); if(overlayTimer) clearTimeout(overlayTimer); });
 
 // ══ PANEL ADMIN ════════════════════════════════════════════════════
-let adminAutenticado = false, empleadosAdmin = [];
+let adminAutenticado = false, empleadosAdmin = [], empExpandido = null;
 
 function abrirAdmin() {
   adminAutenticado = false;
