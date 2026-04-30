@@ -564,14 +564,26 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
       {fields:['employee_id','check_in','check_out'], limit:5000}
     );
 
-    // Normalizar resultado — un solo registro viene como objeto, múltiples como array
+    // Log completo para diagnóstico
+    console.log('[REPORTE-RANGO] Resultado raw:', JSON.stringify(registros).substring(0, 500));
+    
+    // Normalizar resultado
     let regs = [];
     if (Array.isArray(registros)) {
       regs = registros;
-    } else if (registros && typeof registros === 'object' && registros.employee_id) {
-      regs = [registros]; // un solo registro
+    } else if (registros && typeof registros === 'object') {
+      // Puede ser un solo registro o un objeto con estructura diferente
+      if (registros.employee_id) {
+        regs = [registros];
+      } else {
+        // Intentar extraer valores del objeto
+        const vals = Object.values(registros);
+        if (vals.length > 0 && typeof vals[0] === 'object') {
+          regs = vals;
+        }
+      }
     }
-    console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
+    console.log('[REPORTE-RANGO] Registros normalizados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
