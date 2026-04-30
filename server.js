@@ -129,7 +129,7 @@ function xmlrpcCall(endpoint, method, params) {
         try {
           // Log raw solo para create de hr.attendance
           if (method === 'execute_kw' && params[3] === 'hr.attendance' && params[4] === 'create') {
-            console.log('[XML-RAW-CREATE]', data.substring(0, 300));
+            console.log('[XML-RAW-CREATE]', data.substring(0, 800));
           }
           const p = new XMLParser({
             ignoreAttributes: false,
@@ -452,7 +452,6 @@ app.post('/estado', async (req,res) => {
 // ── PONCHE PRINCIPAL ──────────────────────────────────────────────────────────
 app.post('/ponche', async (req,res) => {
   const {pin, accion} = req.body;
-  // accion: 'entrada' | 'salida_almuerzo' | 'regreso_almuerzo' | 'salida_final'
   if (!pin) return res.status(400).json({ok:false,error:'Falta PIN'});
   if (Object.keys(empleadosPorPIN).length===0) await cargarPinesDesdeGitHub();
   const e = empleadosPorPIN[pin];
@@ -464,99 +463,49 @@ app.post('/ponche', async (req,res) => {
     const horaRD  = ahoraRD();
     let attendance_id, mensaje = '', alertas = [];
 
-    switch(accion) {
-      case 'entrada': {
-        // Verificar llegada tarde
-        const minutosEntrada = horaAMinutos(horaRD);
-        const minutosPermitidos = horaAMinutos(horario.entrada);
-        if (minutosEntrada > minutosPermitidos) {
-          const retraso = minutosEntrada - minutosPermitidos;
-          alertas.push(`⚠️ Llegada tarde: ${retraso} minutos`);
-        }
-        attendance_id = await odooExecute('hr.attendance','create',[{
-          employee_id: e.odoo_id, check_in: ahora
-        }]);
-        console.log(`[PONCHE-DEBUG] attendance_id creado:`, attendance_id, '| tipo:', typeof attendance_id);
-        mensaje = 'ENTRADA REGISTRADA';
-        break;
+    // ── AUTO-DETECTAR: buscar si tiene entrada abierta en Odoo ──────────────
+    const abiertos = await odooExecute('hr.attendance','search_read',
+      [[['employee_id','=',e.odoo_id],['check_out','=',false]]],
+      {fields:['id','check_in'],order:'check_in desc',limit:1}
+    );
+    const tieneAbierto = Array.isArray(abiertos) && abiertos.length > 0;
+
+    if (!tieneAbierto) {
+      // ── ENTRADA ────────────────────────────────────────────────────────────
+      const minutosEntrada   = horaAMinutos(horaRD);
+      const minutosPermitidos = horaAMinutos(horario.entrada);
+      if (minutosEntrada > minutosPermitidos) {
+        const retraso = minutosEntrada - minutosPermitidos;
+        alertas.push(`⚠️ Llegada tarde: ${retraso} minutos`);
       }
+      attendance_id = await odooExecute('hr.attendance','create',[{
+        employee_id: e.odoo_id, check_in: ahora
+      }]);
+      console.log(`[XML-RAW-CREATE] attendance_id:`, attendance_id);
+      mensaje = 'ENTRADA REGISTRADA';
 
-      case 'salida_almuerzo': {
-        // Cerrar registro actual y marcarlo como almuerzo
-        const abiertos = await odooExecute('hr.attendance','search_read',
-          [[['employee_id','=',e.odoo_id],['check_out','=',false]]],
-          {fields:['id'],limit:1}
-        );
-        if (!abiertos||abiertos.length===0) return res.json({ok:false,error:'No hay entrada activa'});
-        await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora}]);
-        attendance_id = abiertos[0].id;
-        mensaje = 'SALIDA A ALMORZAR';
-        break;
+    } else {
+      // ── SALIDA ─────────────────────────────────────────────────────────────
+      const reg = abiertos[0];
+      const minSalida = horaAMinutos(horaRD);
+      const minExtra  = horaAMinutos(horario.extraDesde);
+      if (minSalida > minExtra) {
+        const extra = minSalida - minExtra;
+        alertas.push(`✅ Tiempo extra: ${extra} minutos acreditados`);
       }
-
-      case 'regreso_almuerzo': {
-        // Verificar exceso de almuerzo
-        const bloqueAlmuerzo = await odooExecute('hr.attendance','search_read',
-          [[['employee_id','=',e.odoo_id],['reason','=','salida_almuerzo'],['check_out','!=',false]]],
-          {fields:['check_out'],order:'check_out desc',limit:1}
-        );
-        if (bloqueAlmuerzo&&bloqueAlmuerzo.length>0) {
-          const salidaAlm = new Date(bloqueAlmuerzo[0].check_out.replace(' ','T')+'Z');
-          const ahora2    = new Date();
-          const minAlm    = Math.round((ahora2 - salidaAlm) / 60000);
-          if (minAlm > horario.almuerzo) {
-            const exceso = minAlm - horario.almuerzo;
-            alertas.push(`⚠️ Exceso de almuerzo: ${exceso} minutos serán descontados`);
-            // Crear nota en Odoo
-            await odooExecute('hr.attendance','create',[{
-              employee_id: e.odoo_id, check_in: ahora
-            }]);
-          } else {
-            await odooExecute('hr.attendance','create',[{
-              employee_id: e.odoo_id, check_in: ahora
-            }]);
-          }
-        } else {
-          await odooExecute('hr.attendance','create',[{
-            employee_id: e.odoo_id, check_in: ahora
-          }]);
-        }
-        mensaje = 'REGRESO DE ALMUERZO';
-        break;
-      }
-
-      case 'salida_final': {
-        const abiertos = await odooExecute('hr.attendance','search_read',
-          [[['employee_id','=',e.odoo_id],['check_out','=',false]]],
-          {fields:['id'],limit:1}
-        );
-        if (!abiertos||abiertos.length===0) return res.json({ok:false,error:'No hay entrada activa'});
-
-        // Verificar tiempo extra
-        const minSalida = horaAMinutos(horaRD);
-        const minExtra  = horaAMinutos(horario.extraDesde);
-        if (minSalida > minExtra) {
-          const extra = minSalida - minExtra;
-          alertas.push(`✅ Tiempo extra: ${extra} minutos acreditados`);
-          await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora}]);
-        } else {
-          await odooExecute('hr.attendance','write',[[abiertos[0].id],{check_out:ahora}]);
-        }
-        attendance_id = abiertos[0].id;
-        mensaje = 'SALIDA REGISTRADA';
-        break;
-      }
-
-      default:
-        return res.status(400).json({ok:false,error:'Acción no válida'});
+      await odooExecute('hr.attendance','write',[[reg.id],{check_out:ahora}]);
+      attendance_id = reg.id;
+      mensaje = 'SALIDA REGISTRADA';
     }
 
-    console.log(`[PONCHE] ${e.nombre} → ${accion.toUpperCase()} | ${horaRD}`);
-    return res.json({ok:true, accion, mensaje, nombre:e.nombre, hora:horaRD, attendance_id, alertas});
+    console.log(`[PONCHE] ${e.nombre} → ${tieneAbierto ? 'SALIDA' : 'ENTRADA'} | ${ahora} | id: ${attendance_id}`);
+
+    const tipo = tieneAbierto ? 'salida' : 'entrada';
+    return res.json({ ok: true, tipo, mensaje, nombre: e.nombre, hora: horaRD, attendance_id, alertas });
 
   } catch(err) {
-    console.error('[ERROR]',err.message);
-    return res.status(500).json({ok:false,error:err.message});
+    console.error('[ERROR]', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
   }
 });
 
