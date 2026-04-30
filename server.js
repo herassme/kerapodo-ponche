@@ -456,6 +456,7 @@ app.post('/ponche', async (req,res) => {
         attendance_id = await odooExecute('hr.attendance','create',[{
           employee_id: e.odoo_id, check_in: ahora
         }]);
+        console.log(`[PONCHE-DEBUG] attendance_id creado:`, attendance_id, '| tipo:', typeof attendance_id);
         mensaje = 'ENTRADA REGISTRADA';
         break;
       }
@@ -625,18 +626,8 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 
     function rdFechaAUTC(fechaRD, esInicio) {
       const [y,m,d] = fechaRD.split('-').map(Number);
-      // Odoo guarda en hora local RD (sin conversión UTC)
-      // Buscar desde las 00:00 hasta las 23:59:59 en hora local
-      if (esInicio) return `${fechaRD} 00:00:00`;
-      else {
-        // Último día: calcular fecha correcta
-        const fin = new Date(y, m-1, d);
-        fin.setDate(fin.getDate() + 1);
-        const yf = fin.getFullYear();
-        const mf = String(fin.getMonth()+1).padStart(2,'0');
-        const df = String(fin.getDate()).padStart(2,'0');
-        return `${yf}-${mf}-${df} 00:00:00`;
-      }
+      if (esInicio) return new Date(Date.UTC(y,m-1,d,4,0,0)).toISOString().replace('T',' ').substring(0,19);
+      else          return new Date(Date.UTC(y,m-1,d+1,3,59,59)).toISOString().replace('T',' ').substring(0,19);
     }
 
     const ahoraRDms = Date.now() - 4*3600000;
