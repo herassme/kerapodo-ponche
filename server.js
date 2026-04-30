@@ -212,7 +212,7 @@ async function odooJsonRpc(method, params) {
 // Obtener UID de Odoo via XML-RPC (ya funciona)
 async function getOdooUid() {
   if (getOdooUid._uid) return getOdooUid._uid;
-  const uid = await xmlrpcCall(ODOO_URL+'/xmlrpc/2/common','authenticate',[ODOO_DB,ODOO_USER,ODOO_PASS,{}]);
+  const uid = await xmlrpcCall('/xmlrpc/2/common','authenticate',[ODOO_DB,ODOO_USER,ODOO_PASS,{}]);
   getOdooUid._uid = uid;
   return uid;
 }
