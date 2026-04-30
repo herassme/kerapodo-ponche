@@ -153,7 +153,7 @@ function extractValue(n) {
   if (n.boolean!==undefined) return n.boolean==='1'||n.boolean===1;
   if (n.string!==undefined) return n.string;
   if (typeof n==='string'||typeof n==='number') return n;
-  if (n.array?.data?.value) { const v=n.array.data.value; return (Array.isArray(v)?v:[v]).map(extractValue); }
+  if (n.array?.data!==undefined) { if(!n.array.data||n.array.data.value===undefined) return []; const v=n.array.data.value; return (Array.isArray(v)?v:[v]).map(extractValue); }
   if (n.struct?.member) { const m=Array.isArray(n.struct.member)?n.struct.member:[n.struct.member]; const r={}; m.forEach(x=>r[x.name]=extractValue(x.value)); return r; }
   return n;
 }
@@ -555,18 +555,14 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
     if (empleado_id) filtro.push(['employee_id','=',parseInt(empleado_id)]);
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
-    console.log('[REPORTE-RANGO] Filtro:', JSON.stringify(filtro));
     
-    // Usar search primero para contar, luego read
-    const ids = await odooExecute('hr.attendance','search',[filtro],{limit:5000});
-    console.log('[REPORTE-RANGO] IDs encontrados:', Array.isArray(ids) ? ids.length : ids);
-    
-    const registros = ids && ids.length > 0 
-      ? await odooExecute('hr.attendance','read',[ids,['employee_id','check_in','check_out']])
-      : [];
+    const registros = await odooExecute('hr.attendance','search_read',
+      [filtro],
+      {fields:['employee_id','check_in','check_out'],order:'employee_id asc,check_in asc',limit:5000}
+    );
 
     const regs = Array.isArray(registros) ? registros : [];
-    console.log('[REPORTE-RANGO] Registros leídos:', regs.length);
+    console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
