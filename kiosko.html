@@ -1724,6 +1724,65 @@ async function cargarReporteRango() {
   btn.disabled = false;
 }
 
+// ── HELPERS DE EXPORTACIÓN ────────────────────────────────────────
+function exportarCSV() {
+  if (!reporteState.datos) return;
+  const rows = [['Empleado','Días Trabajados','Horas Totales','Horas Efectivas','Descuentos','Banco Extra','Días Tarde','Días Sin Almuerzo','Días Incompletos','Calificación','Puntos','Descripción']];
+  reporteState.datos.empleados.forEach(e => {
+    const cal = e.calificacion || {};
+    rows.push([e.nombre, e.dias_trabajados, e.horas_totales, e.horas_efectivas, e.desc_fmt, e.banco_fmt, e.dias_tarde, e.dias_sin_almuerzo, e.dias_incompletos||0, cal.letra||'—', cal.puntos||0, cal.descripcion||'']);
+  });
+  const lineas = rows.map(function(r){ return r.map(function(v){ var s = String(v).replace(/"/g, '""'); return '"' + s + '"'; }).join(','); });
+  const csv = lineas.join('\r\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `kerapodo-reporte-${reporteState.desde}-${reporteState.hasta}.csv`;
+  a.click();
+}
+
+async function exportarExcel() {
+  if (!reporteState.datos) return;
+  // Usamos SheetJS via CDN
+  if (!window.XLSX) {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    document.head.appendChild(s);
+    await new Promise(r => s.onload = r);
+  }
+  const wb = window.XLSX.utils.book_new();
+
+  // Hoja 1: Resumen general
+  const resumenData = [
+    ['KERAPODO — Reporte de Asistencia'],
+    [`Período: ${reporteState.desde} al ${reporteState.hasta}`],
+    [''],
+    ['Empleado','Días','Horas Totales','Horas Efectivas','Descuentos','Banco Extra','Días Tarde','Sin Almuerzo','Incompletos','Calificación','Puntos','Estado'],
+  ];
+  reporteState.datos.empleados.forEach(e => {
+    const cal = e.calificacion || {};
+    resumenData.push([e.nombre, e.dias_trabajados, e.horas_totales, e.horas_efectivas, e.desc_fmt, e.banco_fmt, e.dias_tarde, e.dias_sin_almuerzo, e.dias_incompletos||0, cal.letra||'—', cal.puntos||0, cal.descripcion||'']);
+  });
+  const ws1 = window.XLSX.utils.aoa_to_sheet(resumenData);
+  ws1['!cols'] = [{wch:30},{wch:8},{wch:14},{wch:14},{wch:12},{wch:12},{wch:10},{wch:12},{wch:12},{wch:12},{wch:8},{wch:22}];
+  window.XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+
+  // Hoja 2: Detalle día a día
+  const detalleData = [['Empleado','Fecha','Entrada','Salida','Horas','Tarde (min)','Exceso Alm (min)','Banco Extra (min)','Sin Almuerzo','Incompleto','Estado']];
+  reporteState.datos.empleados.forEach(e => {
+    (e.detalle_dias||[]).forEach(d => {
+      const estado = d.incompleto ? 'Incompleto' : (d.desc_tarde>0||d.desc_exceso>0||d.sin_almuerzo) ? 'Con novedad' : 'OK';
+      detalleData.push([e.nombre, d.dia, d.hora_entrada, d.hora_salida, d.horas_fmt, d.desc_tarde||0, d.desc_exceso||0, d.banco_extra||0, d.sin_almuerzo?'Sí':'No', d.incompleto?'Sí':'No', estado]);
+    });
+  });
+  const ws2 = window.XLSX.utils.aoa_to_sheet(detalleData);
+  ws2['!cols'] = [{wch:30},{wch:12},{wch:10},{wch:10},{wch:8},{wch:12},{wch:15},{wch:15},{wch:12},{wch:12},{wch:14}];
+  window.XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por día');
+
+  window.XLSX.writeFile(wb, `kerapodo-reporte-${reporteState.desde}-${reporteState.hasta}.xlsx`);
+}
+
+// ── RENDER RESULTADOS ─────────────────────────────────────────────
 function renderReporteResultados(d) {
   const kpisEl = document.getElementById('rp-kpis');
   kpisEl.style.display = 'grid';
@@ -1738,11 +1797,17 @@ function renderReporteResultados(d) {
   if (!d.empleados.length) { res.innerHTML = '<div class="rp-empty">No hay registros en este período</div>'; return; }
 
   let html = `
-    <input class="rp-search" placeholder="Buscar empleado..." oninput="filtrarReporte(this.value)"/>
-    <button class="rp-csv-btn" onclick="exportarCSV()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Exportar CSV
-    </button>
+    <input class="rp-search" placeholder="Buscar empleado..." oninput="filtrarReporte(this.value)" id="rp-search"/>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="rp-csv-btn" onclick="exportarCSV()" style="flex:1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
+      </button>
+      <button class="rp-csv-btn" onclick="exportarExcel()" style="flex:1;color:var(--green);border-color:rgba(13,122,85,.2);background:var(--green-pale)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+        Excel
+      </button>
+    </div>
     <div id="rp-lista-emps">`;
 
   d.empleados.forEach(e => { html += renderEmpReporte(e); });
@@ -1751,36 +1816,75 @@ function renderReporteResultados(d) {
 }
 
 function renderEmpReporte(e) {
-  const tieneAlerta = e.alertas.length > 0;
+  const tieneAlerta = e.alertas && e.alertas.length > 0;
   const isExp = reporteState.expandidos[e.id];
+  const cal = e.calificacion || {letra:'—', puntos:0, color:'#9aa3b5', descripcion:''};
+
   let detalle = '';
   if (isExp) {
     detalle = `<div class="rp-emp-detail show">
+      <!-- Calificación destacada -->
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100);margin-bottom:10px">
+        <div style="width:48px;height:48px;border-radius:50%;background:${cal.color}15;border:2px solid ${cal.color};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
+          <span style="font-family:'DM Serif Display',serif;font-size:18px;font-weight:700;color:${cal.color};line-height:1">${cal.letra}</span>
+          <span style="font-size:9px;color:${cal.color};font-weight:600">${cal.puntos}pts</span>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${cal.descripcion}</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">
+            ${cal.desglose ? `Tardanza: -${cal.desglose.tardanza}pts · Sin alm: -${cal.desglose.sinAlmuerzo}pts · Exceso: -${cal.desglose.excesoAlm}pts · Incompleto: -${cal.desglose.incompletos}pts` : ''}
+          </div>
+        </div>
+        <button onclick="exportarEmpleadoExcel(${e.id})" style="background:var(--green-pale);border:1.5px solid rgba(13,122,85,.2);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;color:var(--green);cursor:pointer;display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Excel
+        </button>
+      </div>
+
+      <!-- Mini stats -->
       <div class="rp-mini-stats">
         <div class="rp-mini-stat"><div class="rp-mini-val">${e.dias_trabajados}</div><div class="rp-mini-lbl">Días</div></div>
         <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${e.total_descuentos>0?'var(--red)':'var(--gray-400)'}">${e.desc_fmt}</div><div class="rp-mini-lbl">Descuento</div></div>
-        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${e.total_banco>0?'var(--sky)':'var(--gray-400)'}">${e.banco_fmt}</div><div class="rp-mini-lbl">Banco</div></div>
+        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${(e.total_banco||0)>0?'var(--sky)':'var(--gray-400)'}">${e.banco_fmt}</div><div class="rp-mini-lbl">Banco</div></div>
         <div class="rp-mini-stat"><div class="rp-mini-val" style="color:var(--green)">${e.horas_efectivas}</div><div class="rp-mini-lbl">Efectivas</div></div>
       </div>
-      ${e.alertas.map(a=>`<div class="rp-alerta-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>${a}</div>`).join('')}
+
+      <!-- Alertas -->
+      ${(e.alertas||[]).map(a=>`<div class="rp-alerta-item">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        ${a}
+      </div>`).join('')}
+
+      <!-- Detalle día a día -->
       <table class="rp-dia-table">
         <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th></tr>
-        ${e.detalle_dias.map(d=>{
+        ${(e.detalle_dias||[]).map(d=>{
           const badges=[];
-          if(d.desc_tarde>0)  badges.push(`<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">Tarde ${d.desc_tarde}m</span>`);
+          if(d.incompleto)    badges.push(`<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">⚠ Incompleto</span>`);
+          else if(d.desc_tarde>0) badges.push(`<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">+${d.desc_tarde}m tarde</span>`);
           if(d.sin_almuerzo)  badges.push(`<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">Sin alm.</span>`);
           if(d.desc_exceso>0) badges.push(`<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">+${d.desc_exceso}m alm.</span>`);
-          if(d.banco_extra>0) badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">+${d.banco_extra}m</span>`);
-          if(!badges.length)  badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">OK</span>`);
-          return `<tr><td>${d.dia.substring(5)}</td><td>${d.hora_entrada}</td><td>${d.hora_salida}</td><td style="font-weight:600;color:var(--gray-900)">${d.horas_fmt}</td><td>${badges.join(' ')}</td></tr>`;
+          if(d.banco_extra>0) badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">+${d.banco_extra}m extra</span>`);
+          if(!badges.length)  badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">✓ OK</span>`);
+          return `<tr>
+            <td>${d.dia.substring(5)}</td>
+            <td style="color:${d.sin_entrada?'var(--red)':'inherit'}">${d.hora_entrada}</td>
+            <td style="color:${d.sin_salida?'var(--red)':'inherit'}">${d.hora_salida}</td>
+            <td style="font-weight:600;color:var(--gray-900)">${d.horas_fmt}</td>
+            <td>${badges.join(' ')}</td>
+          </tr>`;
         }).join('')}
       </table>
     </div>`;
   }
+
   return `<div class="rp-emp-row" id="rprow-${e.id}">
     <div class="rp-emp-header" onclick="toggleEmpReporte(${e.id})">
       <div class="rp-emp-av">${e.nombre.charAt(0)}</div>
-      <div class="rp-emp-name">${e.nombre}</div>
+      <div style="flex:1;min-width:0">
+        <div class="rp-emp-name">${e.nombre}</div>
+        <div style="font-size:10px;color:${cal.color};font-weight:600;margin-top:1px">${cal.letra} · ${cal.puntos}pts</div>
+      </div>
       ${tieneAlerta?'<div class="rp-emp-alerta"></div>':''}
       <div class="rp-emp-horas">${e.horas_totales}</div>
       <div class="rp-emp-chevron ${isExp?'open':''}">▾</div>
@@ -1807,18 +1911,61 @@ function filtrarReporte(q) {
   lista.innerHTML = filtrados.map(e=>renderEmpReporte(e)).join('');
 }
 
-function exportarCSV() {
+async function exportarEmpleadoExcel(id) {
   if (!reporteState.datos) return;
-  const rows = [['Empleado','Días','Horas Totales','Horas Efectivas','Descuentos','Banco Extra','Puntualidad %','Días Tarde','Días Sin Almuerzo','Alertas']];
-  reporteState.datos.empleados.forEach(e => {
-    rows.push([e.nombre,e.dias_trabajados,e.horas_totales,e.horas_efectivas,e.desc_fmt,e.banco_fmt,e.puntualidad+'%',e.dias_tarde,e.dias_sin_almuerzo,e.alertas.join(' | ')]);
+  const emp = reporteState.datos.empleados.find(e=>e.id===id);
+  if (!emp) return;
+
+  if (!window.XLSX) {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    document.head.appendChild(s);
+    await new Promise(r => s.onload = r);
+  }
+
+  const cal = emp.calificacion || {};
+  const wb = window.XLSX.utils.book_new();
+
+  // Hoja resumen del empleado
+  const resumen = [
+    ['KERAPODO — Reporte Individual'],
+    [`Empleado: ${emp.nombre}`],
+    [`Período: ${reporteState.desde} al ${reporteState.hasta}`],
+    [''],
+    ['Días trabajados', emp.dias_trabajados],
+    ['Horas totales', emp.horas_totales],
+    ['Horas efectivas', emp.horas_efectivas],
+    ['Descuentos', emp.desc_fmt],
+    ['Banco extra', emp.banco_fmt],
+    ['Días tarde', emp.dias_tarde],
+    ['Días sin almuerzo', emp.dias_sin_almuerzo],
+    ['Días incompletos', emp.dias_incompletos||0],
+    [''],
+    ['CALIFICACIÓN', cal.letra||'—'],
+    ['Puntos', cal.puntos||0],
+    ['Estado', cal.descripcion||''],
+    [''],
+    ['Desglose descuentos:'],
+    ['· Por tardanza', `-${(cal.desglose?.tardanza||0)} pts`],
+    ['· Por sin almuerzo', `-${(cal.desglose?.sinAlmuerzo||0)} pts`],
+    ['· Por exceso almuerzo', `-${(cal.desglose?.excesoAlm||0)} pts`],
+    ['· Por días incompletos', `-${(cal.desglose?.incompletos||0)} pts`],
+  ];
+  const ws1 = window.XLSX.utils.aoa_to_sheet(resumen);
+  ws1['!cols'] = [{wch:25},{wch:15}];
+  window.XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+
+  // Hoja detalle
+  const detalle = [['Fecha','Entrada','Salida','Horas','Tarde (min)','Exceso Alm (min)','Banco Extra (min)','Sin Almuerzo','Incompleto','Estado']];
+  (emp.detalle_dias||[]).forEach(d => {
+    const estado = d.incompleto ? 'Incompleto' : (d.desc_tarde>0||d.desc_exceso>0||d.sin_almuerzo) ? 'Con novedad' : 'OK';
+    detalle.push([d.dia, d.hora_entrada, d.hora_salida, d.horas_fmt, d.desc_tarde||0, d.desc_exceso||0, d.banco_extra||0, d.sin_almuerzo?'Sí':'No', d.incompleto?'Sí':'No', estado]);
   });
-  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download=`kerapodo-reporte-${reporteState.desde}-${reporteState.hasta}.csv`;
-  a.click(); URL.revokeObjectURL(url);
+  const ws2 = window.XLSX.utils.aoa_to_sheet(detalle);
+  ws2['!cols'] = [{wch:12},{wch:10},{wch:12},{wch:8},{wch:12},{wch:15},{wch:15},{wch:12},{wch:12},{wch:14}];
+  window.XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por día');
+
+  window.XLSX.writeFile(wb, `kerapodo-${emp.nombre.replace(/\s+/g,'-')}-${reporteState.desde}-${reporteState.hasta}.xlsx`);
 }
 
 function minAHora(min) { if (!min) return '0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
