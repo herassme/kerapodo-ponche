@@ -672,20 +672,31 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
         if (excesAlm > 0)   diasExceso++;
         if (incompleto)     diasIncompletos++;
 
+        // Calcular duración de almuerzo
+        let durAlmuerzo = 0;
+        if (regsD.length >= 2 && regsD[0].check_out && regsD[1].check_in) {
+          const finB1 = new Date(regsD[0].check_out.replace(' ','T')+'Z').getTime();
+          const iniB2 = new Date(regsD[1].check_in.replace(' ','T')+'Z').getTime();
+          durAlmuerzo = Math.round((iniB2 - finB1) / 60000);
+        }
+
         detalleDias.push({
           dia,
-          hora_entrada: sinEntrada ? '—' : horaEntrada,
-          hora_salida:  sinSalida  ? '⚠️ Sin salida' : (horaSalida || '—'),
+          hora_entrada:       sinEntrada ? '—' : horaEntrada,
+          hora_salida:        sinSalida  ? 'Sin salida' : (horaSalida || '—'),
+          min_entrada:        sinEntrada ? null : minEntrada,
+          min_salida:         sinSalida  ? null : minSalida,
           minutos_trabajados: minTrabajoD,
-          horas_fmt:    minAHora(minTrabajoD),
-          desc_tarde:   descTarde,
-          desc_exceso:  excesAlm,
-          banco_extra:  bancoExtra,
-          sin_almuerzo: !tieneAlm,
+          horas_fmt:          minAHora(minTrabajoD),
+          desc_tarde:         descTarde,
+          desc_exceso:        excesAlm,
+          banco_extra:        bancoExtra,
+          sin_almuerzo:       !tieneAlm,
+          dur_almuerzo:       durAlmuerzo,
           incompleto,
-          sin_entrada:  sinEntrada,
-          sin_salida:   sinSalida,
-          es_finde:     finde,
+          sin_entrada:        sinEntrada,
+          sin_salida:         sinSalida,
+          es_finde:           finde,
         });
       });
 
@@ -706,6 +717,25 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
         dias_sin_almuerzo: diasSinAlmuerzo,
         dias_exceso_alm:  diasExceso,
         detalle_dias:     detalleDias,
+        // Promedios
+        promedio_entrada: (()=>{
+          const validos = detalleDias.filter(d=>d.min_entrada!==null).map(d=>d.min_entrada);
+          if(!validos.length) return '—';
+          const avg = Math.round(validos.reduce((a,b)=>a+b,0)/validos.length);
+          return `${String(Math.floor(avg/60)).padStart(2,'0')}:${String(avg%60).padStart(2,'0')}`;
+        })(),
+        promedio_salida: (()=>{
+          const validos = detalleDias.filter(d=>d.min_salida!==null).map(d=>d.min_salida);
+          if(!validos.length) return '—';
+          const avg = Math.round(validos.reduce((a,b)=>a+b,0)/validos.length);
+          return `${String(Math.floor(avg/60)).padStart(2,'0')}:${String(avg%60).padStart(2,'0')}`;
+        })(),
+        promedio_almuerzo: (()=>{
+          const validos = detalleDias.filter(d=>d.dur_almuerzo>0).map(d=>d.dur_almuerzo);
+          if(!validos.length) return '—';
+          const avg = Math.round(validos.reduce((a,b)=>a+b,0)/validos.length);
+          return `${Math.floor(avg/60)?Math.floor(avg/60)+'h ':''}${avg%60}min`;
+        })(),
         // Calificación
         calificacion: calcularCalificacion(diasTrabajados, diasTarde, diasSinAlmuerzo, diasExceso, diasIncompletos),
         dias_incompletos: diasIncompletos,
