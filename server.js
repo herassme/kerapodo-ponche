@@ -127,10 +127,6 @@ function xmlrpcCall(endpoint, method, params) {
       res.on('data', c => data += c);
       res.on('end', () => {
         try {
-          // Log raw solo para create de hr.attendance
-          if (method === 'execute_kw' && params[3] === 'hr.attendance' && params[4] === 'create') {
-            console.log('[XML-RAW-CREATE]', data.substring(0, 800));
-          }
           const p = new XMLParser({
             ignoreAttributes: false,
             isArray: (name, jpath) => {
@@ -504,8 +500,6 @@ app.post('/ponche', async (req,res) => {
       ]
     );
     const abiertos = parseAttendanceXml(xmlAbiertos);
-    console.log('[DEBUG-ABIERTOS] xml:', xmlAbiertos.substring(0,400));
-    console.log('[DEBUG-ABIERTOS] parsed:', JSON.stringify(abiertos));
     const tieneAbierto = Array.isArray(abiertos) && abiertos.length > 0;
 
     if (!tieneAbierto) {
@@ -519,7 +513,6 @@ app.post('/ponche', async (req,res) => {
       attendance_id = await odooExecute('hr.attendance','create',[{
         employee_id: e.odoo_id, check_in: ahora
       }]);
-      console.log(`[XML-RAW-CREATE] attendance_id:`, attendance_id);
       mensaje = 'ENTRADA REGISTRADA';
 
     } else {
@@ -589,15 +582,13 @@ app.get('/admin/reporte-hoy', requireAdmin, async (req,res) => {
     const inicioStr  = inicioRD.toISOString().replace('T',' ').substring(0,19);
     const horario = getHorarioHoy();
 
-    const registros = await odooExecute('hr.attendance','search_read',
-      [[['check_in','>=',inicioStr]]],
-      {fields:['employee_id','check_in','check_out'],order:'employee_id asc,check_in asc'}
+    const xmlRegs = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [[['check_in','>=',inicioStr]]],
+        {fields:['employee_id','check_in','check_out'], order:'employee_id asc,check_in asc'}
+      ]
     );
-
-    // Proteger contra null o array vacío — un solo registro viene como objeto
-    let regs = [];
-    if (Array.isArray(registros)) regs = registros;
-    else if (registros && typeof registros === 'object' && registros.employee_id) regs = [registros];
+    const regs = parseAttendanceXml(xmlRegs);
 
     // Agrupar por empleado
     const porEmpleado = {};
@@ -651,20 +642,14 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
     if (empleado_id) filtro.push(['employee_id','=',parseInt(empleado_id)]);
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
-    
-    // Parsear XML directamente para evitar problemas con fast-xml-parser y arrays
-    const dominio = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
-    if (empleado_id) dominio.push(['employee_id','=',parseInt(empleado_id)]);
-    
-    // Triple array como reporte-hoy que sí funciona: [[[cond1, cond2]]]
-    const raw = await odooExecute('hr.attendance','search_read',
-      [[dominio]],
-      {fields:['employee_id','check_in','check_out'], order:'employee_id asc,check_in asc', limit:5000}
+
+    const xmlRango = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [filtro],
+        {fields:['employee_id','check_in','check_out'], order:'employee_id asc,check_in asc', limit:5000}
+      ]
     );
-    
-    let regs = [];
-    if (Array.isArray(raw)) regs = raw;
-    else if (raw && typeof raw === 'object' && raw.employee_id) regs = [raw];
+    const regs = parseAttendanceXml(xmlRango);
     console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
