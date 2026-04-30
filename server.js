@@ -126,7 +126,18 @@ function xmlrpcCall(endpoint, method, params) {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
-        try { const p = new XMLParser({ignoreAttributes:false}); resolve(extractValue(p.parse(data)?.methodResponse?.params?.param?.value)); }
+        try { const p = new XMLParser({
+            ignoreAttributes: false,
+            isArray: (name, jpath) => {
+              // Siempre tratar <value> dentro de <data> como array
+              if (name === 'value' && jpath.includes('array.data')) return true;
+              if (name === 'member') return true;
+              return false;
+            }
+          });
+          const parsed = p.parse(data);
+          const paramValue = parsed?.methodResponse?.params?.param?.value;
+          resolve(extractValue(paramValue)); }
         catch(e) { reject(new Error('XML: '+e.message)); }
       });
     });
@@ -171,52 +182,7 @@ async function odooLogin() {
     console.log(`✅ Odoo UID: ${uid}`); return uid;
   } catch(e) { odooAuthError=e.message; console.error('❌ Odoo:',e.message); return null; }
 }
-// JSON-RPC para consultas masivas — usa API Key igual que XML-RPC
-async function odooJsonRpc(method, params) {
-  // Odoo acepta API Key como contraseña en JSON-RPC con el UID numérico
-  const uid = await getOdooUid();
-  
-  const resp = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
-      id: Date.now(),
-      params: {
-        model: params.model,
-        method: method,
-        args: params.args || [],
-        kwargs: {
-          ...( params.kwargs || {} ),
-          context: {
-            uid,
-            lang: 'es_DO',
-          }
-        }
-      }
-    })
-  });
-  
-  const text = await resp.text();
-  try {
-    const data = JSON.parse(text);
-    if (data.error) throw new Error(JSON.stringify(data.error));
-    return data.result;
-  } catch(e) {
-    console.error('[JSON-RPC] Respuesta:', text.substring(0,300));
-    throw new Error('Error JSON-RPC: ' + text.substring(0,150));
-  }
-}
 
-// Obtener UID de Odoo via XML-RPC (ya funciona)
-async function getOdooUid() {
-  if (getOdooUid._uid) return getOdooUid._uid;
-  const uid = await xmlrpcCall('/xmlrpc/2/common','authenticate',[ODOO_DB,ODOO_USER,ODOO_PASS,{}]);
-  getOdooUid._uid = uid;
-  return uid;
-}
-getOdooUid._uid = null;
 
 async function odooExecute(model,method,args,kwargs={}) {
   if (!odooUID) await odooLogin();
@@ -609,21 +575,25 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
     
-    // Usar JSON-RPC que maneja arrays grandes correctamente
-    let dominio = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
+    // Usar mismo método que reporte-hoy pero con rango de fechas
+    const dominio = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
     if (empleado_id) dominio.push(['employee_id','=',parseInt(empleado_id)]);
     
-    const todosRegs = await odooJsonRpc('search_read', {
-      model: 'hr.attendance',
-      args: [dominio],
-      kwargs: {
-        fields: ['employee_id','check_in','check_out'],
-        limit: 5000,
-        order: 'employee_id asc, check_in asc'
-      }
-    });
+    const raw = await odooExecute('hr.attendance','search_read',
+      [[dominio]],
+      {fields:['employee_id','check_in','check_out'], limit:5000}
+    );
     
-    const regs = Array.isArray(todosRegs) ? todosRegs : [];
+    // Normalizar: puede venir como array, objeto único, o null
+    let regs = [];
+    if (Array.isArray(raw)) {
+      regs = raw;
+    } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      // Un solo registro viene como objeto
+      if (raw.id || raw.employee_id) {
+        regs = [raw];
+      }
+    }
     console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
