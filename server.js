@@ -577,9 +577,41 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
       porEmp[id].dias[dia].push(r);
     });
 
+    // ── SISTEMA DE CALIFICACIÓN ──────────────────────────────────────
+    function calcularCalificacion(diasTrabajados, diasTarde, diasSinAlmuerzo, diasExcesoAlm, diasIncompletos) {
+      if (diasTrabajados === 0) return { puntos:0, letra:'N/A', descripcion:'Sin registros', color:'#9aa3b5' };
+      
+      let totalDescuentos = 0;
+      totalDescuentos += diasTarde        * 5;
+      totalDescuentos += diasSinAlmuerzo  * 2;
+      totalDescuentos += diasExcesoAlm    * 3;
+      totalDescuentos += diasIncompletos  * 5;
+
+      // Máximo de descuento posible = diasTrabajados * 15 (todos los descuentos en cada día)
+      const maxDesc = diasTrabajados * 15;
+      const puntosBase = 100;
+      // Descuento proporcional al período
+      const descPorcentual = Math.min(100, Math.round((totalDescuentos / (diasTrabajados * 10)) * 100));
+      const puntos = Math.max(0, puntosBase - descPorcentual);
+
+      let letra, descripcion, color;
+      if (puntos >= 95)      { letra='A+'; descripcion='Excelente asistencia';    color='#0d7a55'; }
+      else if (puntos >= 85) { letra='A';  descripcion='Muy buena asistencia';    color='#2d9e6b'; }
+      else if (puntos >= 70) { letra='B';  descripcion='Asistencia regular';      color='#b45309'; }
+      else if (puntos >= 50) { letra='C';  descripcion='Necesita mejorar';        color='#e07820'; }
+      else                   { letra='D';  descripcion='Asistencia deficiente';   color='#c0392b'; }
+
+      return { puntos, letra, descripcion, color, totalDescuentos, desglose:{
+        tardanza:     diasTarde * 5,
+        sinAlmuerzo:  diasSinAlmuerzo * 2,
+        excesoAlm:    diasExcesoAlm * 3,
+        incompletos:  diasIncompletos * 5,
+      }};
+    }
+
     const resumen = Object.values(porEmp).map(emp => {
       let totalMin=0, totalDesc=0, totalBanco=0;
-      let diasTrabajados=0, diasTarde=0, diasSinAlmuerzo=0, diasExceso=0;
+      let diasTrabajados=0, diasTarde=0, diasSinAlmuerzo=0, diasExceso=0, diasIncompletos=0;
       const detalleDias = [];
 
       Object.entries(emp.dias).forEach(([dia, regsD]) => {
@@ -611,12 +643,17 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
           }
         });
 
+        // Registro incompleto: sin check_in o sin check_out en último registro
+        const sinEntrada = !primero.check_in;
+        const sinSalida  = ultimo.check_in && !ultimo.check_out;
+        const incompleto = sinEntrada || sinSalida;
+
         // Descuentos y banco
-        const descTarde   = minEntrada > minPermitido ? minEntrada - minPermitido : 0;
+        const descTarde   = !incompleto && minEntrada > minPermitido ? minEntrada - minPermitido : 0;
         const bancoExtra  = minSalida && minSalida > minExtraDesde ? minSalida - minExtraDesde : 0;
         const tieneAlm    = regsD.length > 1;
 
-        // Exceso almuerzo (si hay 2+ registros, calcular gap)
+        // Exceso almuerzo
         let excesAlm = 0;
         if (regsD.length >= 2 && regsD[0].check_out && regsD[1].check_in) {
           const finBloque1 = new Date(regsD[0].check_out.replace(' ','T')+'Z').getTime();
@@ -633,17 +670,21 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
         if (descTarde > 0)  diasTarde++;
         if (!tieneAlm)      diasSinAlmuerzo++;
         if (excesAlm > 0)   diasExceso++;
+        if (incompleto)     diasIncompletos++;
 
         detalleDias.push({
           dia,
-          hora_entrada: horaEntrada,
-          hora_salida:  horaSalida || '—',
+          hora_entrada: sinEntrada ? '—' : horaEntrada,
+          hora_salida:  sinSalida  ? '⚠️ Sin salida' : (horaSalida || '—'),
           minutos_trabajados: minTrabajoD,
           horas_fmt:    minAHora(minTrabajoD),
           desc_tarde:   descTarde,
           desc_exceso:  excesAlm,
           banco_extra:  bancoExtra,
           sin_almuerzo: !tieneAlm,
+          incompleto,
+          sin_entrada:  sinEntrada,
+          sin_salida:   sinSalida,
           es_finde:     finde,
         });
       });
@@ -665,8 +706,12 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
         dias_sin_almuerzo: diasSinAlmuerzo,
         dias_exceso_alm:  diasExceso,
         detalle_dias:     detalleDias,
+        // Calificación
+        calificacion: calcularCalificacion(diasTrabajados, diasTarde, diasSinAlmuerzo, diasExceso, diasIncompletos),
+        dias_incompletos: diasIncompletos,
         // Alertas
         alertas: [
+          ...(diasIncompletos > 0  ? [`${diasIncompletos} día(s) con ponche incompleto`] : []),
           ...(diasTarde >= 3       ? [`Llegó tarde ${diasTarde} días en el período`] : []),
           ...(diasSinAlmuerzo >= 2 ? [`Sin registro de almuerzo ${diasSinAlmuerzo} días`] : []),
           ...(diasExceso >= 2      ? [`Exceso de almuerzo ${diasExceso} días`] : []),
