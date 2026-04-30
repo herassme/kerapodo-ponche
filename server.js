@@ -649,6 +649,7 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
         {fields:['employee_id','check_in','check_out'], order:'employee_id asc,check_in asc', limit:5000}
       ]
     );
+    console.log('[REPORTE-XML]', xmlRango.substring(0, 1000));
     const regs = parseAttendanceXml(xmlRango);
     console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
