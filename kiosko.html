@@ -1825,30 +1825,50 @@ function renderEmpReporte(e) {
   let detalle = '';
   if (isExp) {
     detalle = `<div class="rp-emp-detail show">
-      <!-- Calificación destacada -->
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100);margin-bottom:10px">
-        <div style="width:48px;height:48px;border-radius:50%;background:${cal.color}15;border:2px solid ${cal.color};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
-          <span style="font-family:'DM Serif Display',serif;font-size:18px;font-weight:700;color:${cal.color};line-height:1">${cal.letra}</span>
-          <span style="font-size:9px;color:${cal.color};font-weight:600">${cal.puntos}pts</span>
+
+      <!-- Calificación + exportar -->
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100);margin-bottom:12px">
+        <div style="width:52px;height:52px;border-radius:50%;background:${cal.color}18;border:2.5px solid ${cal.color};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
+          <span style="font-family:'DM Serif Display',serif;font-size:20px;font-weight:700;color:${cal.color};line-height:1">${cal.letra}</span>
+          <span style="font-size:9px;color:${cal.color};font-weight:700;letter-spacing:.04em">${cal.puntos}pts</span>
         </div>
-        <div style="flex:1">
+        <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${cal.descripcion}</div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">
-            ${cal.desglose ? `Tardanza: -${cal.desglose.tardanza}pts · Sin alm: -${cal.desglose.sinAlmuerzo}pts · Exceso: -${cal.desglose.excesoAlm}pts · Incompleto: -${cal.desglose.incompletos}pts` : ''}
+          <div style="font-size:10px;color:var(--gray-400);margin-top:3px;line-height:1.5">
+            ${cal.desglose?`Tard: -${cal.desglose.tardanza}pts &nbsp;·&nbsp; Sin alm: -${cal.desglose.sinAlmuerzo}pts &nbsp;·&nbsp; Exc alm: -${cal.desglose.excesoAlm}pts &nbsp;·&nbsp; Incomp: -${cal.desglose.incompletos}pts`:''}
           </div>
         </div>
-        <button onclick="exportarEmpleadoExcel(${e.id})" style="background:var(--green-pale);border:1.5px solid rgba(13,122,85,.2);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;color:var(--green);cursor:pointer;display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <button onclick="exportarEmpleadoExcel(${e.id})" style="background:var(--green-pale);border:1.5px solid rgba(13,122,85,.2);border-radius:8px;padding:7px 11px;font-size:11px;font-weight:600;color:var(--green);cursor:pointer;display:flex;align-items:center;gap:4px;flex-shrink:0;white-space:nowrap">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Excel
+          Exportar Excel
         </button>
       </div>
 
-      <!-- Mini stats -->
-      <div class="rp-mini-stats">
+      <!-- Stats resumen: 4 columnas -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
         <div class="rp-mini-stat"><div class="rp-mini-val">${e.dias_trabajados}</div><div class="rp-mini-lbl">Días</div></div>
-        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${e.total_descuentos>0?'var(--red)':'var(--gray-400)'}">${e.desc_fmt}</div><div class="rp-mini-lbl">Descuento</div></div>
-        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${(e.total_banco||0)>0?'var(--sky)':'var(--gray-400)'}">${e.banco_fmt}</div><div class="rp-mini-lbl">Banco</div></div>
         <div class="rp-mini-stat"><div class="rp-mini-val" style="color:var(--green)">${e.horas_efectivas}</div><div class="rp-mini-lbl">Efectivas</div></div>
+        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${e.total_descuentos>0?'var(--red)':'var(--gray-300)'}">${e.desc_fmt}</div><div class="rp-mini-lbl">Descuento</div></div>
+        <div class="rp-mini-stat"><div class="rp-mini-val" style="color:${(e.total_banco||0)>0?'var(--sky)':'var(--gray-300)'}">${e.banco_fmt}</div><div class="rp-mini-lbl">Banco</div></div>
+      </div>
+
+      <!-- Promedios: comportamiento habitual -->
+      <div style="background:var(--gray-50);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Comportamiento promedio</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="text-align:center">
+            <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--gray-900)">${e.promedio_entrada||'—'}</div>
+            <div style="font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Hora llegada</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--gray-900)">${e.promedio_salida||'—'}</div>
+            <div style="font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Hora salida</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--gray-900)">${e.promedio_almuerzo||'—'}</div>
+            <div style="font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Dur. almuerzo</div>
+          </div>
+        </div>
       </div>
 
       <!-- Alertas -->
@@ -1859,22 +1879,24 @@ function renderEmpReporte(e) {
 
       <!-- Detalle día a día -->
       <table class="rp-dia-table">
-        <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th></tr>
+        <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Almuerzo</th><th>Horas</th><th>Estado</th></tr>
         ${(e.detalle_dias||[]).map(d=>{
           const badges=[];
-          if(d.incompleto)    badges.push(`<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">⚠ Incompleto</span>`);
-          else if(d.desc_tarde>0) badges.push(`<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">+${d.desc_tarde}m tarde</span>`);
-          if(d.sin_almuerzo)  badges.push(`<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">Sin alm.</span>`);
-          if(d.desc_exceso>0) badges.push(`<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">+${d.desc_exceso}m alm.</span>`);
-          if(d.banco_extra>0) badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">+${d.banco_extra}m extra</span>`);
-          if(!badges.length)  badges.push(`<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">✓ OK</span>`);
-          return `<tr>
-            <td>${d.dia.substring(5)}</td>
-            <td style="color:${d.sin_entrada?'var(--red)':'inherit'}">${d.hora_entrada}</td>
-            <td style="color:${d.sin_salida?'var(--red)':'inherit'}">${d.hora_salida}</td>
-            <td style="font-weight:600;color:var(--gray-900)">${d.horas_fmt}</td>
-            <td>${badges.join(' ')}</td>
-          </tr>`;
+          if(d.incompleto)       badges.push('<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">Incompleto</span>');
+          else if(d.desc_tarde>0) badges.push('<span class="rp-dia-badge" style="background:var(--red-pale);color:var(--red)">+'+d.desc_tarde+'m tarde</span>');
+          if(d.sin_almuerzo)     badges.push('<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">Sin alm.</span>');
+          if(d.desc_exceso>0)    badges.push('<span class="rp-dia-badge" style="background:var(--amber-pale);color:var(--amber)">+'+d.desc_exceso+'m exc.</span>');
+          if(d.banco_extra>0)    badges.push('<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">+'+d.banco_extra+'m extra</span>');
+          if(!badges.length)     badges.push('<span class="rp-dia-badge" style="background:var(--green-pale);color:var(--green)">OK</span>');
+          const almStr = d.dur_almuerzo>0 ? (Math.floor(d.dur_almuerzo/60)?Math.floor(d.dur_almuerzo/60)+'h ':'')+(d.dur_almuerzo%60)+'min' : '—';
+          return '<tr>'
+            +'<td>'+d.dia.substring(5)+'</td>'
+            +'<td style="color:'+(d.sin_entrada?'var(--red)':'inherit')+'">'+d.hora_entrada+'</td>'
+            +'<td style="color:'+(d.sin_salida?'var(--red)':'inherit')+'">'+d.hora_salida+'</td>'
+            +'<td style="color:'+(d.dur_almuerzo>90?'var(--amber)':'inherit')+'">'+almStr+'</td>'
+            +'<td style="font-weight:600;color:var(--gray-900)">'+d.horas_fmt+'</td>'
+            +'<td>'+badges.join(' ')+'</td>'
+            +'</tr>';
         }).join('')}
       </table>
     </div>`;
