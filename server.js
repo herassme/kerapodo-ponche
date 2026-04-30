@@ -171,51 +171,54 @@ async function odooLogin() {
     console.log(`✅ Odoo UID: ${uid}`); return uid;
   } catch(e) { odooAuthError=e.message; console.error('❌ Odoo:',e.message); return null; }
 }
-// JSON-RPC para consultas masivas (evita problemas de XML-RPC con arrays grandes)
+// JSON-RPC para consultas masivas
 async function odooJsonRpc(method, params) {
-  const url = `${ODOO_URL}/web/dataset/call_kw`;
-  const body = JSON.stringify({
-    jsonrpc: '2.0',
-    method: 'call',
-    id: Date.now(),
-    params: {
-      model: params.model,
-      method: method,
-      args: params.args || [],
-      kwargs: params.kwargs || {}
-    }
+  // Autenticar y obtener session_id
+  const authResp = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      jsonrpc: '2.0', method: 'call', id: 1,
+      params: { db: ODOO_DB, login: ODOO_USER, password: ODOO_PASS }
+    })
   });
+  const authData = await authResp.json();
+  if (!authData.result?.uid) throw new Error('Auth JSON-RPC falló');
+  
+  const sessionCookie = authResp.headers.get('set-cookie') || '';
+  // Extraer session_id de la cookie
+  const sessionMatch = sessionCookie.match(/session_id=([^;]+)/);
+  const sessionId = sessionMatch ? sessionMatch[1] : '';
 
-  // Primero autenticar si no tenemos session
-  if (!odooJsonRpc._session) {
-    const authResp = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        jsonrpc: '2.0', method: 'call', id: 1,
-        params: { db: ODOO_DB, login: ODOO_USER, password: ODOO_PASS }
-      })
-    });
-    const authData = await authResp.json();
-    const cookies = authResp.headers.get('set-cookie') || '';
-    odooJsonRpc._session = cookies;
-    odooJsonRpc._uid = authData?.result?.uid;
-  }
-
-  const resp = await fetch(url, {
+  const resp = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Cookie': odooJsonRpc._session || ''
+      'Cookie': `session_id=${sessionId}`
     },
-    body
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'call',
+      id: Date.now(),
+      params: {
+        model: params.model,
+        method: method,
+        args: params.args || [],
+        kwargs: params.kwargs || {}
+      }
+    })
   });
-  const data = await resp.json();
-  if (data.error) throw new Error(JSON.stringify(data.error));
-  return data.result;
+  
+  const text = await resp.text();
+  try {
+    const data = JSON.parse(text);
+    if (data.error) throw new Error(JSON.stringify(data.error));
+    return data.result;
+  } catch(e) {
+    console.error('[JSON-RPC] Respuesta no es JSON:', text.substring(0,200));
+    throw new Error('Respuesta inválida de Odoo: ' + text.substring(0,100));
+  }
 }
-odooJsonRpc._session = null;
-odooJsonRpc._uid = null;
 
 async function odooExecute(model,method,args,kwargs={}) {
   if (!odooUID) await odooLogin();
