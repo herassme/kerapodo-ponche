@@ -2082,6 +2082,13 @@ async function renderTabEmpleados(filtro='') {
   if (filtro) { const s=document.getElementById('ep-search-input'); if(s){s.focus();s.setSelectionRange(filtro.length,filtro.length);} }
 }
 
+function toggleEmp(pin) {
+  closeEmpMenus();
+  empExpandido = empExpandido === pin ? null : pin;
+  const filtro = document.getElementById('ep-search-input') ? document.getElementById('ep-search-input').value : '';
+  renderTabEmpleados(filtro);
+}
+
 function toggleEmpMenu(pin) {
   const drop = document.getElementById('epdrop-' + pin);
   if (!drop) return;
