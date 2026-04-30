@@ -1798,8 +1798,68 @@ function renderReporteResultados(d) {
   const res = document.getElementById('rp-resultados');
   if (!d.empleados.length) { res.innerHTML = '<div class="rp-empty">No hay registros en este período</div>'; return; }
 
+  // Guardar empleados globalmente para re-ordenar sin recargar
+  window._rpEmpleados = d.empleados;
+  window._rpOrden = window._rpOrden || 'puntos_desc';
+
+  function ordenarEmpleados(lista, orden) {
+    const arr = [...lista];
+    switch(orden) {
+      case 'puntos_desc': return arr.sort((a,b) => (b.calificacion?.puntos||0) - (a.calificacion?.puntos||0));
+      case 'puntos_asc':  return arr.sort((a,b) => (a.calificacion?.puntos||0) - (b.calificacion?.puntos||0));
+      case 'horas_desc':  return arr.sort((a,b) => (b.total_minutos||0) - (a.total_minutos||0));
+      case 'horas_asc':   return arr.sort((a,b) => (a.total_minutos||0) - (b.total_minutos||0));
+      case 'tarde_desc':  return arr.sort((a,b) => (b.dias_tarde||0) - (a.dias_tarde||0));
+      case 'alfa_asc':    return arr.sort((a,b) => a.nombre.localeCompare(b.nombre));
+      default: return arr;
+    }
+  }
+
+  window.aplicarOrden = function(orden) {
+    window._rpOrden = orden;
+    // Actualizar botones activos
+    document.querySelectorAll('.rp-orden-btn').forEach(b => {
+      b.style.background = b.dataset.orden === orden ? 'var(--blue)' : 'var(--gray-50)';
+      b.style.color = b.dataset.orden === orden ? 'var(--white)' : 'var(--gray-600)';
+      b.style.borderColor = b.dataset.orden === orden ? 'var(--blue)' : 'var(--gray-200)';
+    });
+    const lista = document.getElementById('rp-lista-emps');
+    if (!lista) return;
+    const filtro = document.getElementById('rp-search')?.value || '';
+    const ordenados = ordenarEmpleados(window._rpEmpleados, orden);
+    const filtrados = filtro ? ordenados.filter(e => e.nombre.toLowerCase().includes(filtro.toLowerCase())) : ordenados;
+    lista.innerHTML = filtrados.map(e => renderEmpReporte(e)).join('');
+  };
+
+  const ordenInicial = ordenarEmpleados(d.empleados, window._rpOrden);
+
+  const ORDENES = [
+    { key:'puntos_desc', label:'★ Mayor puntuación' },
+    { key:'puntos_asc',  label:'★ Menor puntuación' },
+    { key:'horas_desc',  label:'⏱ Más horas' },
+    { key:'horas_asc',   label:'⏱ Menos horas' },
+    { key:'tarde_desc',  label:'⚠ Más tardanzas' },
+    { key:'alfa_asc',    label:'A→Z Nombre' },
+  ];
+
   let html = `
     <input class="rp-search" placeholder="Buscar empleado..." oninput="filtrarReporte(this.value)" id="rp-search"/>
+
+    <!-- Ordenamiento -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Ordenar por</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${ORDENES.map(o => `
+          <button class="rp-orden-btn" data-orden="${o.key}" onclick="aplicarOrden('${o.key}')"
+            style="font-size:11px;padding:5px 10px;border-radius:20px;border:1.5px solid ${window._rpOrden===o.key?'var(--blue)':'var(--gray-200)'};
+            background:${window._rpOrden===o.key?'var(--blue)':'var(--gray-50)'};
+            color:${window._rpOrden===o.key?'var(--white)':'var(--gray-600)'};
+            cursor:pointer;font-weight:500;transition:all .15s;white-space:nowrap">
+            ${o.label}
+          </button>`).join('')}
+      </div>
+    </div>
+
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button class="rp-csv-btn" onclick="exportarCSV()" style="flex:1">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1812,7 +1872,7 @@ function renderReporteResultados(d) {
     </div>
     <div id="rp-lista-emps">`;
 
-  d.empleados.forEach(e => { html += renderEmpReporte(e); });
+  ordenInicial.forEach(e => { html += renderEmpReporte(e); });
   html += '</div>';
   res.innerHTML = html;
 }
@@ -1926,12 +1986,22 @@ function toggleEmpReporte(id) {
 }
 
 function filtrarReporte(q) {
-  if (!reporteState.datos) return;
+  if (!window._rpEmpleados) return;
   const lista = document.getElementById('rp-lista-emps');
   if (!lista) return;
-  const filtrados = q
-    ? reporteState.datos.empleados.filter(e=>e.nombre.toLowerCase().includes(q.toLowerCase()))
-    : reporteState.datos.empleados;
+  const orden = window._rpOrden || 'puntos_desc';
+  const ordenados = [...window._rpEmpleados].sort((a,b) => {
+    switch(orden) {
+      case 'puntos_desc': return (b.calificacion?.puntos||0) - (a.calificacion?.puntos||0);
+      case 'puntos_asc':  return (a.calificacion?.puntos||0) - (b.calificacion?.puntos||0);
+      case 'horas_desc':  return (b.total_minutos||0) - (a.total_minutos||0);
+      case 'horas_asc':   return (a.total_minutos||0) - (b.total_minutos||0);
+      case 'tarde_desc':  return (b.dias_tarde||0) - (a.dias_tarde||0);
+      case 'alfa_asc':    return a.nombre.localeCompare(b.nombre);
+      default: return 0;
+    }
+  });
+  const filtrados = q ? ordenados.filter(e=>e.nombre.toLowerCase().includes(q.toLowerCase())) : ordenados;
   lista.innerHTML = filtrados.map(e=>renderEmpReporte(e)).join('');
 }
 
