@@ -153,7 +153,11 @@ function extractValue(n) {
   if (n.boolean!==undefined) return n.boolean==='1'||n.boolean===1;
   if (n.string!==undefined) return n.string;
   if (typeof n==='string'||typeof n==='number') return n;
-  if (n.array?.data!==undefined) { if(!n.array.data||n.array.data.value===undefined) return []; const v=n.array.data.value; return (Array.isArray(v)?v:[v]).map(extractValue); }
+  if (n.array !== undefined) {
+    if (!n.array.data || n.array.data.value === undefined) return [];
+    const v = n.array.data.value;
+    return (Array.isArray(v) ? v : [v]).map(extractValue);
+  }
   if (n.struct?.member) { const m=Array.isArray(n.struct.member)?n.struct.member:[n.struct.member]; const r={}; m.forEach(x=>r[x.name]=extractValue(x.value)); return r; }
   return n;
 }
@@ -558,21 +562,36 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
     
-    // Traer todos los registros sin filtro de fecha y filtrar en servidor
-    // (el filtro de Odoo por fecha no funciona con este XML-RPC)
-    let dominio = [];
-    if (empleado_id) dominio = [['employee_id','=',parseInt(empleado_id)]];
+    // Paso 1: obtener IDs con search
+    let dominioSearch = [];
+    if (empleado_id) dominioSearch = [['employee_id','=',parseInt(empleado_id)]];
     
-    const registros = await odooExecute('hr.attendance','search_read',
-      [[dominio]],
-      {fields:['employee_id','check_in','check_out'], limit:10000}
+    const idsRaw = await odooExecute('hr.attendance','search',
+      [[dominioSearch]],
+      {limit:10000, order:'check_in asc'}
     );
-
-    let todosRegs = [];
-    if (Array.isArray(registros)) todosRegs = registros;
-    else if (registros && typeof registros === 'object' && registros.employee_id) todosRegs = [registros];
     
-    console.log('[REPORTE-RANGO] Total registros Odoo:', todosRegs.length);
+    console.log('[REPORTE-RANGO] IDs raw tipo:', typeof idsRaw, '| valor:', JSON.stringify(idsRaw).substring(0,200));
+    
+    let ids = [];
+    if (Array.isArray(idsRaw)) ids = idsRaw;
+    else if (typeof idsRaw === 'number') ids = [idsRaw];
+    else if (idsRaw && typeof idsRaw === 'object') ids = Object.values(idsRaw).filter(v => typeof v === 'number');
+    
+    console.log('[REPORTE-RANGO] Total IDs:', ids.length);
+    
+    if (!ids.length) { return res.json({ok:true, desde:fechaDesde, hasta:fechaHasta, kpis:{total_empleados:0,promedio_horas:0,empleados_tarde:0,empleados_alerta:0,puntualidad_promedio:100}, empleados:[]}); }
+    
+    // Paso 2: leer registros por IDs
+    const registrosRaw = await odooExecute('hr.attendance','read',
+      [ids, ['employee_id','check_in','check_out']]
+    );
+    
+    let todosRegs = [];
+    if (Array.isArray(registrosRaw)) todosRegs = registrosRaw;
+    else if (registrosRaw && typeof registrosRaw === 'object' && registrosRaw.id) todosRegs = [registrosRaw];
+    
+    console.log('[REPORTE-RANGO] Registros leídos:', todosRegs.length);
     
     // Filtrar por rango de fechas en el servidor
     const desdeMs = new Date(desdeUTC.replace(' ','T')+'Z').getTime();
