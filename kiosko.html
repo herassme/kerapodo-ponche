@@ -1985,32 +1985,135 @@ async function renderTabEmpleados(filtro='') {
     } catch(e) { c.innerHTML = '<div style="color:var(--red);padding:20px;font-size:13px">Error de conexión</div>'; return; }
   }
   const lista = filtro ? empleadosAdmin.filter(e => e.nombre.toLowerCase().includes(filtro.toLowerCase()) || e.pin.includes(filtro)) : empleadosAdmin;
-  const editSvg = '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
-  const camSvg  = '<circle cx="12" cy="12" r="3"/><path d="M9 2H15L17 4H20a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3z"/>';
-  const delSvg  = '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>';
-  let html = `<div class="ac-title">${empleadosAdmin.length} empleados</div>
-    <input class="ac-search" placeholder="Buscar por nombre o PIN..." oninput="renderTabEmpleados(this.value)" value="${filtro}"/>
-    <button class="ac-btn-primary" onclick="sincronizarOdoo()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-      Sincronizar con Odoo
-    </button>`;
+  let html = `
+  <style>
+    .ep-row{border:1.5px solid var(--gray-100);border-radius:12px;margin-bottom:6px;overflow:visible;position:relative;transition:border-color .2s}
+    .ep-row.expanded{border-color:var(--blue)}
+    .ep-main{display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer}
+    .ep-av{width:34px;height:34px;border-radius:50%;background:var(--blue-pale);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0}
+    .ep-info{flex:1;min-width:0}
+    .ep-name{font-size:13px;font-weight:600;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ep-sub{font-size:10px;color:var(--gray-400);margin-top:1px;display:flex;align-items:center;gap:5px}
+    .ep-pin{background:var(--blue);color:white;font-size:12px;font-weight:600;padding:2px 9px;border-radius:6px;letter-spacing:.04em;flex-shrink:0}
+    .ep-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .ep-dot.ok{background:var(--green)} .ep-dot.no{background:var(--gray-200)}
+    .ep-menu-btn{background:none;border:none;color:var(--gray-400);cursor:pointer;padding:6px 8px;border-radius:6px;display:flex;align-items:center;flex-shrink:0;transition:all .15s}
+    .ep-menu-btn:hover{background:var(--gray-100);color:var(--gray-700)}
+    .ep-chevron{color:var(--gray-300);font-size:11px;transition:transform .2s;flex-shrink:0}
+    .ep-chevron.open{transform:rotate(180deg);color:var(--blue)}
+    .ep-dropdown{position:absolute;right:12px;top:46px;background:white;border:1.5px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(17,24,39,.14);z-index:200;min-width:190px;overflow:hidden;display:none}
+    .ep-dropdown.show{display:block;animation:dropIn .15s ease}
+    @keyframes dropIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    .ep-drop-item{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray-700);cursor:pointer;transition:background .12s;text-align:left}
+    .ep-drop-item:hover{background:var(--gray-50)}
+    .ep-drop-item.red{color:var(--red)}
+    .ep-drop-item.red:hover{background:var(--red-pale)}
+    .ep-drop-item svg{flex-shrink:0;opacity:.6}
+    .ep-expanded{border-top:1px solid var(--gray-100);padding:12px 13px;display:none;flex-direction:column;gap:8px}
+    .ep-expanded.show{display:flex}
+    .ep-rep-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--blue);color:white;border:none;border-radius:8px;padding:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+    .ep-rep-btn:hover{background:var(--blue-light)}
+    .ep-rep-btn svg{width:13px;height:13px}
+    .ep-sync{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--gray-50);border:1.5px dashed var(--gray-200);border-radius:8px;padding:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--gray-400);cursor:pointer;margin-bottom:8px;transition:all .15s}
+    .ep-sync:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-pale)}
+    .ep-sync svg{width:13px;height:13px}
+  </style>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <span style="font-size:14px;font-weight:600;color:var(--gray-900)">${empleadosAdmin.length} empleados</span>
+    <span style="font-size:11px;color:var(--gray-400)">${lista.length} mostrados</span>
+  </div>
+  <input class="ac-search" id="ep-search-input" placeholder="Buscar nombre o PIN..." oninput="renderTabEmpleados(this.value)" value="${filtro}"/>
+  <button class="ep-sync" onclick="sincronizarOdoo()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+    Sincronizar con Odoo
+  </button>`;
+
   lista.forEach(e => {
     const tieneRostro = descriptoresFaciales[e.pin] !== undefined;
-    html += `<div class="ac-emp">
-      <div class="ac-av">${e.nombre.charAt(0)}</div>
-      <div class="ac-emp-info">
-        <div class="ac-emp-name">${e.nombre}</div>
-        <div class="ac-emp-detail">ID ${e.odoo_id} · ${tieneRostro ? 'Con rostro' : 'Sin rostro'}</div>
+    const isExp = empExpandido === e.pin;
+    const p = e.pin;
+    const n = e.nombre.replace(/'/g, "\\'");
+    const oid = e.odoo_id;
+    html += `<div class="ep-row ${isExp?'expanded':''}" id="eprow-${p}">
+      <div class="ep-main" onclick="toggleEmp('${p}')">
+        <div class="ep-av">${e.nombre.charAt(0)}</div>
+        <div class="ep-info">
+          <div class="ep-name">${e.nombre}</div>
+          <div class="ep-sub">
+            <div class="ep-dot ${tieneRostro?'ok':'no'}"></div>
+            <span>${tieneRostro?'Con rostro':'Sin rostro'} &middot; PIN ${p}</span>
+          </div>
+        </div>
+        <div class="ep-pin">${p}</div>
+        <button class="ep-menu-btn" onclick="event.stopPropagation();toggleEmpMenu('${p}')">
+          <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg>
+        </button>
+        <div class="ep-chevron ${isExp?'open':''}">&#9662;</div>
       </div>
-      <div class="ac-pin">${e.pin}</div>
-      <div class="ac-btns">
-        <button class="ac-btn" onclick="abrirEditarPin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}',${e.odoo_id})" title="Editar PIN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${editSvg}</svg></button>
-        <button class="ac-btn facial" onclick="reregistrarRostroAdmin('${e.pin}','${e.nombre.replace(/'/g,"\\'")}') " title="Actualizar rostro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${camSvg}</svg></button>
-        <button class="ac-btn del" onclick="abrirEliminar('${e.pin}','${e.nombre.replace(/'/g,"\\'")}') " title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${delSvg}</svg></button>
+      <div class="ep-dropdown" id="epdrop-${p}">
+        <button class="ep-drop-item" onclick="closeEmpMenus();abrirEditarPin('${p}','${n}',${oid})">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar PIN
+        </button>
+        <button class="ep-drop-item" onclick="closeEmpMenus();reregistrarRostroAdmin('${p}','${n}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M9 2H15L17 4H20a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3z"/></svg>
+          ${tieneRostro?'Actualizar rostro':'Registrar rostro'}
+        </button>
+        <button class="ep-drop-item red" onclick="closeEmpMenus();abrirEliminar('${p}','${n}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Eliminar empleado
+        </button>
+      </div>
+      <div class="ep-expanded ${isExp?'show':''}">
+        <button class="ep-rep-btn" onclick="verReporteEmpleado(${oid},'${n}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Ver reporte de asistencia
+        </button>
+        <div style="font-size:11px;color:var(--gray-400);text-align:center">
+          ${tieneRostro?'<span style="color:var(--green);font-weight:500">&#9679; Rostro registrado</span>':'<span>&#9675; Sin rostro registrado</span>'}
+          &nbsp;&middot;&nbsp;ID Odoo: ${oid}
+        </div>
       </div>
     </div>`;
   });
   c.innerHTML = html;
+  if (filtro) { const s=document.getElementById('ep-search-input'); if(s){s.focus();s.setSelectionRange(filtro.length,filtro.length);} }
+}
+
+function toggleEmpMenu(pin) {
+  const drop = document.getElementById('epdrop-' + pin);
+  if (!drop) return;
+  const isOpen = drop.classList.contains('show');
+  closeEmpMenus();
+  if (!isOpen) drop.classList.add('show');
+}
+
+function closeEmpMenus() {
+  document.querySelectorAll('.ep-dropdown.show').forEach(function(d){ d.classList.remove('show'); });
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.ep-dropdown') && !e.target.closest('.ep-menu-btn')) closeEmpMenus();
+});
+
+function verReporteEmpleado(odooId, nombre) {
+  reporteState.empleadoId = odooId;
+  reporteState.expandidos = {};
+  adminTab('reporte');
+  setTimeout(async function() {
+    const btn = document.getElementById('rp-cargar-btn');
+    if (btn && !document.getElementById('rp-emp-nota')) {
+      const nota = document.createElement('div');
+      nota.id = 'rp-emp-nota';
+      nota.style.cssText = 'font-size:12px;color:var(--blue);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px';
+      const nombreLimpio = nombre.replace(/\\'/g, "'");
+      nota.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+        + nombreLimpio
+        + ' <span style="font-weight:400;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:4px" onclick="reporteState.empleadoId=null;this.parentNode.remove()">Quitar filtro</span>';
+      btn.parentNode.insertBefore(nota, btn);
+    }
+    await cargarReporteRango();
+  }, 150);
 }
 
 async function sincronizarOdoo() {
