@@ -126,7 +126,11 @@ function xmlrpcCall(endpoint, method, params) {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
-        try { const p = new XMLParser({ignoreAttributes:false}); resolve(extractValue(p.parse(data)?.methodResponse?.params?.param?.value)); }
+        try { const p = new XMLParser({ignoreAttributes:false, isArray:(name)=>['value','member','param'].includes(name)});
+          const parsed = p.parse(data);
+          const params = parsed?.methodResponse?.params?.param;
+          const paramVal = Array.isArray(params) ? params[0]?.value : params?.value;
+          resolve(extractValue(paramVal)); }
         catch(e) { reject(new Error('XML: '+e.message)); }
       });
     });
@@ -146,19 +150,27 @@ function toXmlValue(v) {
 }
 
 function extractValue(n) {
-  if (!n) return null;
-  if (n.int!==undefined) return parseInt(n.int);
-  if (n.i4!==undefined) return parseInt(n.i4);
-  if (n.double!==undefined) return parseFloat(n.double);
-  if (n.boolean!==undefined) return n.boolean==='1'||n.boolean===1;
-  if (n.string!==undefined) return n.string;
-  if (typeof n==='string'||typeof n==='number') return n;
+  if (n === null || n === undefined) return null;
+  if (n.int !== undefined) return parseInt(n.int);
+  if (n.i4 !== undefined) return parseInt(n.i4);
+  if (n.double !== undefined) return parseFloat(n.double);
+  if (n.boolean !== undefined) return n.boolean === '1' || n.boolean === 1;
+  if (n.string !== undefined) return String(n.string === false ? '' : n.string);
+  if (typeof n === 'string' || typeof n === 'number') return n;
   if (n.array !== undefined) {
-    if (!n.array.data || n.array.data.value === undefined) return [];
+    // Array vacío
+    if (!n.array || !n.array.data) return [];
+    if (n.array.data.value === undefined || n.array.data.value === null) return [];
     const v = n.array.data.value;
     return (Array.isArray(v) ? v : [v]).map(extractValue);
   }
-  if (n.struct?.member) { const m=Array.isArray(n.struct.member)?n.struct.member:[n.struct.member]; const r={}; m.forEach(x=>r[x.name]=extractValue(x.value)); return r; }
+  if (n.struct !== undefined) {
+    if (!n.struct || !n.struct.member) return {};
+    const m = Array.isArray(n.struct.member) ? n.struct.member : [n.struct.member];
+    const r = {};
+    m.forEach(x => { if (x && x.name) r[x.name] = extractValue(x.value); });
+    return r;
+  }
   return n;
 }
 
