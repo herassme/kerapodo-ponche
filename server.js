@@ -471,6 +471,8 @@ app.post('/ponche', async (req,res) => {
       ]
     );
     const abiertos = parseAttendanceXml(xmlAbiertos);
+    console.log('[DEBUG-ABIERTOS] xml:', xmlAbiertos.substring(0,400));
+    console.log('[DEBUG-ABIERTOS] parsed:', JSON.stringify(abiertos));
     const tieneAbierto = Array.isArray(abiertos) && abiertos.length > 0;
 
     if (!tieneAbierto) {
