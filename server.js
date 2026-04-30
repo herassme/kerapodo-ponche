@@ -146,15 +146,24 @@ function xmlrpcCall(endpoint, method, params) {
   });
 }
 
+function escapeXml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 function toXmlValue(v) {
   if (v===null||v===false) return '<boolean>0</boolean>';
   if (v===true) return '<boolean>1</boolean>';
   if (typeof v==='number'&&Number.isInteger(v)) return `<int>${v}</int>`;
   if (typeof v==='number') return `<double>${v}</double>`;
-  if (typeof v==='string') return `<string>${v}</string>`;
+  if (typeof v==='string') return `<string>${escapeXml(v)}</string>`;
   if (Array.isArray(v)) return `<array><data>${v.map(x=>`<value>${toXmlValue(x)}</value>`).join('')}</data></array>`;
-  if (typeof v==='object') return `<struct>${Object.entries(v).map(([k,val])=>`<member><name>${k}</name><value>${toXmlValue(val)}</value></member>`).join('')}</struct>`;
-  return `<string>${String(v)}</string>`;
+  if (typeof v==='object') return `<struct>${Object.entries(v).map(([k,val])=>`<member><name>${escapeXml(k)}</name><value>${toXmlValue(val)}</value></member>`).join('')}</struct>`;
+  return `<string>${escapeXml(String(v))}</string>`;
 }
 
 function extractValue(n) {
