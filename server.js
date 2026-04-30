@@ -171,31 +171,14 @@ async function odooLogin() {
     console.log(`✅ Odoo UID: ${uid}`); return uid;
   } catch(e) { odooAuthError=e.message; console.error('❌ Odoo:',e.message); return null; }
 }
-// JSON-RPC para consultas masivas
+// JSON-RPC para consultas masivas — usa API Key igual que XML-RPC
 async function odooJsonRpc(method, params) {
-  // Autenticar y obtener session_id
-  const authResp = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      jsonrpc: '2.0', method: 'call', id: 1,
-      params: { db: ODOO_DB, login: ODOO_USER, password: ODOO_PASS }
-    })
-  });
-  const authData = await authResp.json();
-  if (!authData.result?.uid) throw new Error('Auth JSON-RPC falló');
+  // Odoo acepta API Key como contraseña en JSON-RPC con el UID numérico
+  const uid = await getOdooUid();
   
-  const sessionCookie = authResp.headers.get('set-cookie') || '';
-  // Extraer session_id de la cookie
-  const sessionMatch = sessionCookie.match(/session_id=([^;]+)/);
-  const sessionId = sessionMatch ? sessionMatch[1] : '';
-
   const resp = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cookie': `session_id=${sessionId}`
-    },
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       jsonrpc: '2.0',
       method: 'call',
@@ -204,7 +187,13 @@ async function odooJsonRpc(method, params) {
         model: params.model,
         method: method,
         args: params.args || [],
-        kwargs: params.kwargs || {}
+        kwargs: {
+          ...( params.kwargs || {} ),
+          context: {
+            uid,
+            lang: 'es_DO',
+          }
+        }
       }
     })
   });
@@ -215,10 +204,19 @@ async function odooJsonRpc(method, params) {
     if (data.error) throw new Error(JSON.stringify(data.error));
     return data.result;
   } catch(e) {
-    console.error('[JSON-RPC] Respuesta no es JSON:', text.substring(0,200));
-    throw new Error('Respuesta inválida de Odoo: ' + text.substring(0,100));
+    console.error('[JSON-RPC] Respuesta:', text.substring(0,300));
+    throw new Error('Error JSON-RPC: ' + text.substring(0,150));
   }
 }
+
+// Obtener UID de Odoo via XML-RPC (ya funciona)
+async function getOdooUid() {
+  if (getOdooUid._uid) return getOdooUid._uid;
+  const uid = await xmlrpcCall(ODOO_URL+'/xmlrpc/2/common','authenticate',[ODOO_DB,ODOO_USER,ODOO_PASS,{}]);
+  getOdooUid._uid = uid;
+  return uid;
+}
+getOdooUid._uid = null;
 
 async function odooExecute(model,method,args,kwargs={}) {
   if (!odooUID) await odooLogin();
