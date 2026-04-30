@@ -540,12 +540,14 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
     const filtro = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
     if (empleado_id) filtro.push(['employee_id','=',parseInt(empleado_id)]);
 
+    console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
     const registros = await odooExecute('hr.attendance','search_read',
       [filtro],
       {fields:['employee_id','check_in','check_out'],order:'employee_id asc,check_in asc',limit:5000}
     );
 
     const regs = Array.isArray(registros) ? registros : [];
+    console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
