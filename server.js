@@ -264,7 +264,7 @@ function parseAttendanceXml(xml) {
       }
     }
     
-    if (record.id && record.employee_id) {
+    if (record.id) {
       results.push(record);
     }
   }
@@ -444,8 +444,41 @@ app.post('/estado', async (req,res) => {
   const e = empleadosPorPIN[pin];
   if (!e) return res.status(404).json({error:'PIN incorrecto'});
   try {
-    const estado = await getEstadoEmpleado(e.odoo_id);
-    res.json({ ok:true, nombre:e.nombre, ...estado });
+    if (!odooUID) await odooLogin();
+
+    // Buscar entrada abierta (sin check_out) — sin límite de fecha
+    const xmlAbierto = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [[['employee_id','=',e.odoo_id],['check_out','=',false]]],
+        {fields:['id','check_in'], order:'check_in desc', limit:1}
+      ]
+    );
+    const abiertos = parseAttendanceXml(xmlAbierto);
+    const tieneAbierto = abiertos.length > 0;
+
+    // Buscar registros de hoy para saber si ya completó la jornada
+    const xmlHoy = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [[['employee_id','=',e.odoo_id],['check_in','>=',inicioDiaUTC()]]],
+        {fields:['id','check_in','check_out'], order:'check_in asc', limit:10}
+      ]
+    );
+    const regsHoy = parseAttendanceXml(xmlHoy);
+
+    let estado;
+    if (!tieneAbierto && regsHoy.length === 0) {
+      estado = 'sin_entrada';       // → botón Entrada
+    } else if (tieneAbierto && regsHoy.length <= 1) {
+      estado = 'en_trabajo';        // → botón Salida a Almorzar
+    } else if (!tieneAbierto && regsHoy.length === 1) {
+      estado = 'en_almuerzo';       // → botón Regreso de Almuerzo
+    } else if (tieneAbierto && regsHoy.length >= 2) {
+      estado = 'regreso_almuerzo';  // → botón Salida Final
+    } else {
+      estado = 'salio';             // Jornada completada
+    }
+
+    res.json({ ok:true, nombre:e.nombre, estado, registros: regsHoy });
   } catch(err) { res.status(500).json({error:err.message}); }
 });
 
