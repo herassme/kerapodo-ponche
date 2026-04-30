@@ -558,32 +558,31 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
     
-    // Mismo formato que getEstadoEmpleado que sí funciona
+    // Traer todos los registros sin filtro de fecha y filtrar en servidor
+    // (el filtro de Odoo por fecha no funciona con este XML-RPC)
+    let dominio = [];
+    if (empleado_id) dominio = [['employee_id','=',parseInt(empleado_id)]];
+    
     const registros = await odooExecute('hr.attendance','search_read',
-      [[filtro]],
-      {fields:['employee_id','check_in','check_out'], limit:5000}
+      [[dominio]],
+      {fields:['employee_id','check_in','check_out'], limit:10000}
     );
 
-    // Log completo para diagnóstico
-    console.log('[REPORTE-RANGO] Resultado raw:', JSON.stringify(registros).substring(0, 500));
+    let todosRegs = [];
+    if (Array.isArray(registros)) todosRegs = registros;
+    else if (registros && typeof registros === 'object' && registros.employee_id) todosRegs = [registros];
     
-    // Normalizar resultado
-    let regs = [];
-    if (Array.isArray(registros)) {
-      regs = registros;
-    } else if (registros && typeof registros === 'object') {
-      // Puede ser un solo registro o un objeto con estructura diferente
-      if (registros.employee_id) {
-        regs = [registros];
-      } else {
-        // Intentar extraer valores del objeto
-        const vals = Object.values(registros);
-        if (vals.length > 0 && typeof vals[0] === 'object') {
-          regs = vals;
-        }
-      }
-    }
-    console.log('[REPORTE-RANGO] Registros normalizados:', regs.length);
+    console.log('[REPORTE-RANGO] Total registros Odoo:', todosRegs.length);
+    
+    // Filtrar por rango de fechas en el servidor
+    const desdeMs = new Date(desdeUTC.replace(' ','T')+'Z').getTime();
+    const hastaMs = new Date(hastaUTC.replace(' ','T')+'Z').getTime();
+    const regs = todosRegs.filter(r => {
+      if (!r.check_in) return false;
+      const t = new Date(r.check_in.replace(' ','T')+'Z').getTime();
+      return t >= desdeMs && t <= hastaMs;
+    });
+    console.log('[REPORTE-RANGO] Registros en rango:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
