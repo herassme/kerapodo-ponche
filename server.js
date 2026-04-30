@@ -126,11 +126,7 @@ function xmlrpcCall(endpoint, method, params) {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
-        try { const p = new XMLParser({ignoreAttributes:false, isArray:(name)=>['value','member','param'].includes(name)});
-          const parsed = p.parse(data);
-          const params = parsed?.methodResponse?.params?.param;
-          const paramVal = Array.isArray(params) ? params[0]?.value : params?.value;
-          resolve(extractValue(paramVal)); }
+        try { const p = new XMLParser({ignoreAttributes:false}); resolve(extractValue(p.parse(data)?.methodResponse?.params?.param?.value)); }
         catch(e) { reject(new Error('XML: '+e.message)); }
       });
     });
@@ -150,27 +146,19 @@ function toXmlValue(v) {
 }
 
 function extractValue(n) {
-  if (n === null || n === undefined) return null;
-  if (n.int !== undefined) return parseInt(n.int);
-  if (n.i4 !== undefined) return parseInt(n.i4);
-  if (n.double !== undefined) return parseFloat(n.double);
-  if (n.boolean !== undefined) return n.boolean === '1' || n.boolean === 1;
-  if (n.string !== undefined) return String(n.string === false ? '' : n.string);
-  if (typeof n === 'string' || typeof n === 'number') return n;
+  if (!n) return null;
+  if (n.int!==undefined) return parseInt(n.int);
+  if (n.i4!==undefined) return parseInt(n.i4);
+  if (n.double!==undefined) return parseFloat(n.double);
+  if (n.boolean!==undefined) return n.boolean==='1'||n.boolean===1;
+  if (n.string!==undefined) return n.string;
+  if (typeof n==='string'||typeof n==='number') return n;
   if (n.array !== undefined) {
-    // Array vacío
-    if (!n.array || !n.array.data) return [];
-    if (n.array.data.value === undefined || n.array.data.value === null) return [];
+    if (!n.array.data || n.array.data.value === undefined) return [];
     const v = n.array.data.value;
     return (Array.isArray(v) ? v : [v]).map(extractValue);
   }
-  if (n.struct !== undefined) {
-    if (!n.struct || !n.struct.member) return {};
-    const m = Array.isArray(n.struct.member) ? n.struct.member : [n.struct.member];
-    const r = {};
-    m.forEach(x => { if (x && x.name) r[x.name] = extractValue(x.value); });
-    return r;
-  }
+  if (n.struct?.member) { const m=Array.isArray(n.struct.member)?n.struct.member:[n.struct.member]; const r={}; m.forEach(x=>r[x.name]=extractValue(x.value)); return r; }
   return n;
 }
 
@@ -183,6 +171,52 @@ async function odooLogin() {
     console.log(`✅ Odoo UID: ${uid}`); return uid;
   } catch(e) { odooAuthError=e.message; console.error('❌ Odoo:',e.message); return null; }
 }
+// JSON-RPC para consultas masivas (evita problemas de XML-RPC con arrays grandes)
+async function odooJsonRpc(method, params) {
+  const url = `${ODOO_URL}/web/dataset/call_kw`;
+  const body = JSON.stringify({
+    jsonrpc: '2.0',
+    method: 'call',
+    id: Date.now(),
+    params: {
+      model: params.model,
+      method: method,
+      args: params.args || [],
+      kwargs: params.kwargs || {}
+    }
+  });
+
+  // Primero autenticar si no tenemos session
+  if (!odooJsonRpc._session) {
+    const authResp = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        jsonrpc: '2.0', method: 'call', id: 1,
+        params: { db: ODOO_DB, login: ODOO_USER, password: ODOO_PASS }
+      })
+    });
+    const authData = await authResp.json();
+    const cookies = authResp.headers.get('set-cookie') || '';
+    odooJsonRpc._session = cookies;
+    odooJsonRpc._uid = authData?.result?.uid;
+  }
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Cookie': odooJsonRpc._session || ''
+    },
+    body
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(JSON.stringify(data.error));
+  return data.result;
+}
+odooJsonRpc._session = null;
+odooJsonRpc._uid = null;
+
 async function odooExecute(model,method,args,kwargs={}) {
   if (!odooUID) await odooLogin();
   if (!odooUID) throw new Error('Sin Odoo: '+odooAuthError);
@@ -574,46 +608,22 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 
     console.log('[REPORTE-RANGO] Buscando desde', desdeUTC, 'hasta', hastaUTC);
     
-    // Paso 1: obtener IDs con search
-    let dominioSearch = [];
-    if (empleado_id) dominioSearch = [['employee_id','=',parseInt(empleado_id)]];
+    // Usar JSON-RPC que maneja arrays grandes correctamente
+    let dominio = [['check_in','>=',desdeUTC],['check_in','<=',hastaUTC]];
+    if (empleado_id) dominio.push(['employee_id','=',parseInt(empleado_id)]);
     
-    const idsRaw = await odooExecute('hr.attendance','search',
-      [[dominioSearch]],
-      {limit:10000, order:'check_in asc'}
-    );
-    
-    console.log('[REPORTE-RANGO] IDs raw tipo:', typeof idsRaw, '| valor:', JSON.stringify(idsRaw).substring(0,200));
-    
-    let ids = [];
-    if (Array.isArray(idsRaw)) ids = idsRaw;
-    else if (typeof idsRaw === 'number') ids = [idsRaw];
-    else if (idsRaw && typeof idsRaw === 'object') ids = Object.values(idsRaw).filter(v => typeof v === 'number');
-    
-    console.log('[REPORTE-RANGO] Total IDs:', ids.length);
-    
-    if (!ids.length) { return res.json({ok:true, desde:fechaDesde, hasta:fechaHasta, kpis:{total_empleados:0,promedio_horas:0,empleados_tarde:0,empleados_alerta:0,puntualidad_promedio:100}, empleados:[]}); }
-    
-    // Paso 2: leer registros por IDs
-    const registrosRaw = await odooExecute('hr.attendance','read',
-      [ids, ['employee_id','check_in','check_out']]
-    );
-    
-    let todosRegs = [];
-    if (Array.isArray(registrosRaw)) todosRegs = registrosRaw;
-    else if (registrosRaw && typeof registrosRaw === 'object' && registrosRaw.id) todosRegs = [registrosRaw];
-    
-    console.log('[REPORTE-RANGO] Registros leídos:', todosRegs.length);
-    
-    // Filtrar por rango de fechas en el servidor
-    const desdeMs = new Date(desdeUTC.replace(' ','T')+'Z').getTime();
-    const hastaMs = new Date(hastaUTC.replace(' ','T')+'Z').getTime();
-    const regs = todosRegs.filter(r => {
-      if (!r.check_in) return false;
-      const t = new Date(r.check_in.replace(' ','T')+'Z').getTime();
-      return t >= desdeMs && t <= hastaMs;
+    const todosRegs = await odooJsonRpc('search_read', {
+      model: 'hr.attendance',
+      args: [dominio],
+      kwargs: {
+        fields: ['employee_id','check_in','check_out'],
+        limit: 5000,
+        order: 'employee_id asc, check_in asc'
+      }
     });
-    console.log('[REPORTE-RANGO] Registros en rango:', regs.length);
+    
+    const regs = Array.isArray(todosRegs) ? todosRegs : [];
+    console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
