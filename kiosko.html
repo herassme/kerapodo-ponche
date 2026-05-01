@@ -979,7 +979,27 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--gray
       Autorizar acceso
     </button>
     <div style="font-size:12px;color:var(--red);min-height:16px;font-weight:500;text-align:center" id="auth-err"></div>
-    <div style="font-size:10px;color:var(--gray-200);text-align:center" id="auth-device-id"></div>
+
+    <!-- Separador -->
+    <div style="width:100%;display:flex;align-items:center;gap:10px">
+      <div style="flex:1;height:1px;background:var(--gray-100)"></div>
+      <span style="font-size:10px;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase">o</span>
+      <div style="flex:1;height:1px;background:var(--gray-100)"></div>
+    </div>
+
+    <!-- Solicitud remota -->
+    <div id="auth-remoto-wrap" style="width:100%;text-align:center">
+      <button onclick="solicitarAccesoRemoto()" id="auth-remoto-btn"
+        style="background:none;border:1.5px solid var(--gray-200);border-radius:10px;padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--gray-600);cursor:pointer;width:100%;transition:all .15s">
+        Solicitar autorización remota al administrador
+      </button>
+      <div id="auth-remoto-msg" style="display:none;margin-top:10px;font-size:12px;color:var(--gray-600);line-height:1.6;background:var(--blue-pale);border-radius:10px;padding:12px">
+        ⏳ Solicitud enviada. El administrador recibirá tu petición y podrá autorizar este dispositivo remotamente.<br/>
+        <span style="font-size:10px;color:var(--gray-400)">Puedes cerrar y volver a abrir cuando te indiquen.</span>
+      </div>
+    </div>
+
+    <div style="font-size:10px;color:var(--gray-400);text-align:center" id="auth-device-id"></div>
   </div>
 </div>
 
@@ -1141,6 +1161,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--gray
     <div class="admin-tabs">
       <div class="admin-tab active" onclick="adminTab('reporte')" id="atab-reporte">Reporte</div>
       <div class="admin-tab" onclick="adminTab('empleados')" id="atab-empleados">Empleados</div>
+      <div class="admin-tab" onclick="adminTab('seguridad')" id="atab-seguridad">🔐 Seguridad</div>
       <div class="admin-tab" onclick="adminTab('config')" id="atab-config">Config</div>
     </div>
     <div class="admin-content" id="admin-content"></div>
@@ -1171,16 +1192,55 @@ const ACCIONES = {
 };
 
 // ══ INICIO ════════════════════════════════════════════════════════
-window.addEventListener('load', () => {
-  if (localStorage.getItem('kp_device_auth') === '1') {
-    mostrarKiosko();
-  } else {
-    document.getElementById('screen-auth').classList.add('show');
-    document.getElementById('auth-url').value = CONFIG.servidor;
-    document.getElementById('auth-device-id').textContent = 'ID: ' + generarDeviceId();
+window.addEventListener('load', async () => {
+  setTimeout(cargarModelos, 2000);
+  const deviceId = generarDeviceId();
+  const servidor = CONFIG.servidor;
+
+  // Mostrar pantalla de espera mientras verificamos
+  document.getElementById('screen-auth').classList.add('show');
+  document.getElementById('auth-url').value = servidor;
+  document.getElementById('auth-device-id').textContent = 'ID: ' + deviceId;
+
+  // Verificar con el servidor si este dispositivo está autorizado
+  try {
+    const r = await fetch(`${servidor}/dispositivo/verificar`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        deviceId,
+        userAgent: navigator.userAgent,
+        pantalla: `${screen.width}x${screen.height}`
+      })
+    });
+    const d = await r.json();
+
+    if (d.ok && d.estado === 'autorizado') {
+      // Autorizado — mostrar kiosko
+      document.getElementById('screen-auth').classList.remove('show');
+      mostrarKiosko();
+      return;
+    }
+
+    // No autorizado — mostrar estado en pantalla de auth
+    const msgEl = document.getElementById('auth-err');
+    if (d.estado === 'pendiente') {
+      msgEl.textContent = '⏳ Dispositivo pendiente de autorización. Contacta al administrador.';
+      msgEl.style.color = 'var(--amber)';
+    } else if (d.estado === 'rechazado') {
+      msgEl.textContent = '🚫 Dispositivo rechazado por el administrador.';
+      msgEl.style.color = 'var(--red)';
+    } else if (d.estado === 'expirado') {
+      msgEl.textContent = '⚠️ Autorización expirada. Contacta al administrador para renovar.';
+      msgEl.style.color = 'var(--amber)';
+    } else {
+      // Primer acceso o sin conexión — mostrar formulario normal
+      setTimeout(() => document.getElementById('auth-pass').focus(), 400);
+    }
+  } catch(e) {
+    // Sin conexión al servidor — mostrar formulario normal
     setTimeout(() => document.getElementById('auth-pass').focus(), 400);
   }
-  setTimeout(cargarModelos, 2000);
 });
 
 function mostrarKiosko() {
@@ -1211,28 +1271,80 @@ function generarDeviceId() {
   return id;
 }
 
+async function solicitarAccesoRemoto() {
+  const btn = document.getElementById('auth-remoto-btn');
+  const msg = document.getElementById('auth-remoto-msg');
+  const url = (document.getElementById('auth-url').value || window.location.origin).trim().replace(/\/$/,'');
+  btn.disabled = true;
+  btn.textContent = 'Enviando solicitud...';
+  try {
+    const deviceId = generarDeviceId();
+    await fetch(`${url}/dispositivo/verificar`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ deviceId, userAgent: navigator.userAgent, pantalla: `${screen.width}x${screen.height}` })
+    });
+    btn.style.display = 'none';
+    msg.style.display = 'block';
+    // Verificar cada 10 segundos si fue autorizado
+    const intervalo = setInterval(async () => {
+      const r = await fetch(`${url}/dispositivo/verificar`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ deviceId, userAgent: navigator.userAgent, pantalla: `${screen.width}x${screen.height}` })
+      }).catch(()=>null);
+      if (!r) return;
+      const d = await r.json();
+      if (d.ok && d.estado === 'autorizado') {
+        clearInterval(intervalo);
+        document.getElementById('screen-auth').classList.remove('show');
+        mostrarKiosko();
+      }
+    }, 10000);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Solicitar autorización remota al administrador';
+    document.getElementById('auth-err').textContent = 'No se pudo conectar al servidor';
+  }
+}
+
 async function autorizarDispositivo() {
   const url  = (document.getElementById('auth-url').value || window.location.origin).trim().replace(/\/$/,'');
   const pass = document.getElementById('auth-pass').value.trim();
   const err  = document.getElementById('auth-err');
   if (!pass) { err.textContent = 'Ingresa la contraseña'; return; }
   err.textContent = 'Verificando...';
+  err.style.color = 'var(--gray-400)';
   CONFIG.servidor = url;
   try {
     const r = await fetch(`${url}/admin/verificar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:pass}) });
     const d = await r.json();
     if (d.ok) {
       CONFIG.adminKey = pass;
-      localStorage.setItem('kp_device_auth', '1');
       localStorage.setItem('kp_servidor', url);
       localStorage.setItem('kp_adminKey', pass);
+      // Contraseña correcta → autorizar este dispositivo directamente en MongoDB
+      const deviceId = generarDeviceId();
+      await fetch(`${url}/dispositivo/verificar`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ deviceId, userAgent: navigator.userAgent, pantalla: `${screen.width}x${screen.height}` })
+      }).catch(()=>{});
+      // Autorizar inmediatamente usando la admin key
+      await fetch(`${url}/admin/dispositivos/${deviceId}/autorizar`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'x-admin-key': pass},
+        body: JSON.stringify({ nombre: `Dispositivo autorizado localmente` })
+      }).catch(()=>{});
       err.textContent = '';
+      document.getElementById('screen-auth').classList.remove('show');
       mostrarKiosko();
     } else {
       err.textContent = 'Contraseña incorrecta';
+      err.style.color = 'var(--red)';
       document.getElementById('auth-pass').value = '';
     }
-  } catch(e) { err.textContent = 'No se pudo conectar al servidor'; }
+  } catch(e) { err.textContent = 'No se pudo conectar al servidor'; err.style.color = 'var(--red)'; }
 }
 
 // ══ RELOJ ══════════════════════════════════════════════════════════
@@ -1404,6 +1516,12 @@ async function verificarRostro(pinEmp, nombre, descriptor) {
           clearInterval(iv);
           ring.className = 'cam-ring fail'; progress.style.display = 'none';
           status.textContent = 'No se pudo verificar'; status.className = 'cam-status fail';
+          // Reportar intento fallido al servidor
+          fetch(`${CONFIG.servidor}/alerta/face-no-coincide`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ pin: pinEmp, nombre_empleado: nombre })
+          }).catch(()=>{});
           setTimeout(() => { detenerStream(); camScreen.classList.remove('show'); resolve(false); }, 1500);
         }
       }, 500);
@@ -1563,12 +1681,106 @@ async function adminLogin() {
 }
 
 function adminTab(tab) {
-  ['reporte','empleados','config'].forEach(t => document.getElementById(`atab-${t}`).classList.toggle('active', t === tab));
-  // Limpiar contenido anterior siempre
+  ['reporte','empleados','seguridad','config'].forEach(t => {
+    const el = document.getElementById(`atab-${t}`);
+    if (el) el.classList.toggle('active', t === tab);
+  });
   document.getElementById('admin-content').innerHTML = '';
   if (tab === 'reporte')        renderTabReporte();
   else if (tab === 'empleados') { empleadosAdmin = []; renderTabEmpleados(); }
+  else if (tab === 'seguridad') renderTabSeguridad();
   else if (tab === 'config')    renderTabConfig();
+}
+
+async function renderTabSeguridad() {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">Cargando...</div>';
+  try {
+    const [rAlertas, rDisp] = await Promise.all([
+      fetch(`${CONFIG.servidor}/admin/alertas`, { headers:{'x-admin-key':CONFIG.adminKey} }),
+      fetch(`${CONFIG.servidor}/admin/dispositivos`, { headers:{'x-admin-key':CONFIG.adminKey} })
+    ]);
+    const dAlertas = await rAlertas.json();
+    const dDisp    = await rDisp.json();
+    const alertas  = dAlertas.alertas || [];
+    const disps    = dDisp.dispositivos || [];
+
+    const estadoColor = { autorizado:'var(--green)', pendiente:'var(--amber)', rechazado:'var(--red)', expirado:'var(--gray-400)' };
+    const estadoLabel = { autorizado:'✅ Autorizado', pendiente:'⏳ Pendiente', rechazado:'🚫 Rechazado', expirado:'⌛ Expirado' };
+    const tipoLabel   = { pin_incorrecto:'❌ PIN incorrecto', face_no_coincide:'👤 Face ID no coincide' };
+    const tipoColor   = { pin_incorrecto:'var(--amber)', face_no_coincide:'var(--red)' };
+
+    c.innerHTML = `
+      <!-- DISPOSITIVOS -->
+      <div class="ac-title">📱 Dispositivos <span style="font-size:11px;font-weight:400;color:var(--gray-400)">${disps.length} registrado(s)</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        ${disps.length === 0 ? '<div style="font-size:12px;color:var(--gray-400);padding:8px">Sin dispositivos registrados</div>' :
+          disps.map(d => {
+            const color  = estadoColor[d.estado] || 'var(--gray-400)';
+            const label  = estadoLabel[d.estado] || d.estado;
+            const expira = d.expira_en ? new Date(d.expira_en).toLocaleDateString('es-DO') : '—';
+            const desde  = d.primera_visita ? new Date(d.primera_visita).toLocaleDateString('es-DO') : '—';
+            return `<div style="background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:var(--radius);padding:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:700;color:${color}">${label}</span>
+                <span style="font-size:10px;color:var(--gray-400)">Desde ${desde}</span>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:var(--gray-900)">${d.nombre||'Sin nombre'}</div>
+              <div style="font-size:10px;color:var(--gray-400);margin:3px 0">IP: ${d.ip||'—'} · Expira: ${expira}</div>
+              <div style="font-size:9px;color:var(--gray-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(d.userAgent||'').substring(0,55)}</div>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                ${d.estado !== 'autorizado' ? `<button onclick="accionDispositivo('${d.deviceId}','autorizar')" style="font-size:11px;padding:4px 10px;background:var(--green-pale);color:var(--green);border:1.5px solid rgba(13,122,85,.2);border-radius:6px;cursor:pointer;font-weight:600">✅ Autorizar</button>` : ''}
+                ${d.estado !== 'rechazado' ? `<button onclick="accionDispositivo('${d.deviceId}','rechazar')" style="font-size:11px;padding:4px 10px;background:var(--red-pale);color:var(--red);border:1.5px solid rgba(192,57,43,.2);border-radius:6px;cursor:pointer;font-weight:600">🚫 Rechazar</button>` : ''}
+                ${d.estado === 'autorizado' ? `<button onclick="accionDispositivo('${d.deviceId}','revocar')" style="font-size:11px;padding:4px 10px;background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200);border-radius:6px;cursor:pointer">⏸ Revocar</button>` : ''}
+              </div>
+            </div>`;
+          }).join('')
+        }
+      </div>
+
+      <!-- ALERTAS -->
+      <div class="ac-title">🔐 Alertas de acceso <span style="font-size:11px;font-weight:400;color:var(--gray-400)">${alertas.length} registro(s)</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${alertas.length === 0 ? '<div style="font-size:12px;color:var(--gray-400);padding:8px">Sin alertas registradas</div>' :
+          alertas.map(a => `
+            <div style="background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:var(--radius);padding:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:700;color:${tipoColor[a.tipo]||'var(--gray-600)'}">
+                  ${tipoLabel[a.tipo]||a.tipo}
+                </span>
+                <span style="font-size:10px;color:var(--gray-400)">${a.fecha_rd||a.fecha?.substring(0,19)||'—'}</span>
+              </div>
+              ${a.nombre_empleado ? `<div style="font-size:12px;color:var(--gray-900);font-weight:600">Empleado: ${a.nombre_empleado}</div>` : ''}
+              ${a.pin ? `<div style="font-size:11px;color:var(--gray-600)">PIN: ${a.pin}</div>` : ''}
+              <div style="font-size:10px;color:var(--gray-400);margin-top:4px">IP: ${a.ip||'—'}</div>
+              <div style="font-size:10px;color:var(--gray-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(a.user_agent||'').substring(0,60)}</div>
+            </div>`).join('')
+        }
+      </div>`;
+  } catch(e) {
+    c.innerHTML = `<div class="ac-title">🔐 Seguridad</div>
+      <div style="color:var(--red);font-size:13px">Error al cargar: ${e.message}</div>`;
+  }
+}
+
+async function accionDispositivo(deviceId, accion) {
+  let nombre = null;
+  if (accion === 'autorizar') {
+    nombre = prompt('Nombre de este dispositivo (ej: Tablet Sucursal Centro):');
+    if (nombre === null) return; // canceló
+  }
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/dispositivos/${deviceId}/${accion}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+      body: JSON.stringify({ nombre })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(accion === 'autorizar' ? `Dispositivo autorizado por 120 días` : `Dispositivo ${accion}do`, 'ok');
+      renderTabSeguridad();
+    } else toast(d.error || 'Error', 'err');
+  } catch(e) { toast('Error de conexión', 'err'); }
 }
 
 // ══ MÓDULO DE REPORTES ════════════════════════════════════════════
