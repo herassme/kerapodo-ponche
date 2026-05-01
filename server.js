@@ -536,6 +536,7 @@ app.delete('/admin/facial/:pin', requireAdmin, async (req,res) => {
 app.post('/estado', async (req,res) => {
   const {pin} = req.body;
   if (!pin) return res.status(400).json({error:'Falta PIN'});
+  if (!/^\d{1,10}$/.test(String(pin))) return res.status(400).json({error:'PIN inválido'});
   if (Object.keys(empleadosPorPIN).length===0) await cargarPinesDesdeGitHub();
   const e = empleadosPorPIN[pin];
   if (!e) return res.status(404).json({error:'PIN incorrecto'});
@@ -582,6 +583,7 @@ app.post('/estado', async (req,res) => {
 app.post('/ponche', async (req,res) => {
   const {pin, accion} = req.body;
   if (!pin) return res.status(400).json({ok:false,error:'Falta PIN'});
+  if (!/^\d{1,10}$/.test(String(pin))) return res.status(400).json({ok:false,error:'PIN inválido'});
   if (Object.keys(empleadosPorPIN).length===0) await cargarPinesDesdeGitHub();
   const e = empleadosPorPIN[pin];
   if (!e) return res.status(404).json({ok:false,error:'PIN incorrecto'});
