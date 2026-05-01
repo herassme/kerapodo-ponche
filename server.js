@@ -822,7 +822,17 @@ app.post('/alerta/face-no-coincide', async (req,res) => {
   res.json({ok:true});
 });
 
-// Ver alertas (solo admin)
+// El kiosko llama esto cuando se bloquea por intentos fallidos
+app.post('/alerta/bloqueo-terminal', async (req,res) => {
+  const { sucursal } = req.body;
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ua = req.headers['user-agent'] || 'desconocido';
+  console.log(`[ALERTA] Terminal bloqueada — sucursal: ${sucursal||'N/A'} — IP: ${ip}`);
+  await mongoRegistrarAlerta('bloqueo_terminal', {
+    sucursal: sucursal||'N/A', ip, user_agent: ua
+  });
+  res.json({ok:true});
+});
 app.get('/admin/alertas', requireAdmin, async (req,res) => {
   if (!mongoDb) return res.json({ok:true, alertas:[]});
   try {
