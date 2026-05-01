@@ -133,9 +133,64 @@ function fetchURL(url) {
   });
 }
 
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const GITHUB_REPO  = process.env.GITHUB_REPO  || 'herassme/kerapodo-ponche';
+const PINES_PATH   = 'pines.json';
+
+async function sincronizarPinesGitHub() {
+  if (!GITHUB_TOKEN) { console.warn('⚠️ GITHUB_TOKEN no configurado — pines.json no se actualizará'); return; }
+  try {
+    const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${PINES_PATH}`;
+    // Obtener SHA actual del archivo
+    const getRes = await fetchURL(apiUrl + `?token=${GITHUB_TOKEN}`);
+    // No podemos usar fetchURL con headers — usamos https directamente
+    const shaMatch = getRes.match(/"sha"\s*:\s*"([^"]+)"/);
+    const sha = shaMatch ? shaMatch[1] : null;
+
+    const contenido = JSON.stringify({
+      empleados: Object.entries(empleadosPorPIN).map(([pin, e]) => ({
+        pin, odoo_id: e.odoo_id, nombre: e.nombre
+      }))
+    }, null, 2);
+
+    const body = JSON.stringify({
+      message: 'Actualización automática de PINs',
+      content: Buffer.from(contenido).toString('base64'),
+      ...(sha ? { sha } : {})
+    });
+
+    await new Promise((resolve, reject) => {
+      const url = new URL(apiUrl);
+      const req = https.request({
+        hostname: url.hostname, path: url.pathname,
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'kerapodo-ponche',
+          'Content-Length': Buffer.byteLength(body)
+        }
+      }, res => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log('✅ pines.json sincronizado en GitHub');
+            resolve();
+          } else {
+            console.error('❌ GitHub sync:', res.statusCode, d.substring(0,200));
+            resolve(); // No bloquear aunque falle
+          }
+        });
+      });
+      req.on('error', e => { console.error('❌ GitHub sync error:', e.message); resolve(); });
+      req.write(body); req.end();
+    });
+  } catch(e) { console.error('❌ sincronizarPinesGitHub:', e.message); }
+}
+
 async function cargarPinesDesdeGitHub() {
   try {
-    const data = await fetchURL(PINES_URL);
     const json = JSON.parse(data);
     if (Array.isArray(json.empleados)) {
       json.empleados.forEach(e => {
@@ -919,6 +974,47 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
 // ── RUTAS ADMIN BÁSICAS ───────────────────────────────────────────────────────
 app.get('/admin/empleados', requireAdmin, (req,res) => {
   res.json({total:Object.keys(empleadosPorPIN).length, empleados:Object.entries(empleadosPorPIN).map(([pin,e])=>({pin,odoo_id:e.odoo_id,nombre:e.nombre}))});
+});
+
+// Crear o actualizar PIN
+app.post('/admin/pin', requireAdmin, async (req,res) => {
+  const {odoo_id, nombre, pin} = req.body;
+  if (!odoo_id||!nombre||!pin) return res.status(400).json({error:'Faltan datos'});
+  empleadosPorPIN[String(pin)] = {odoo_id:parseInt(odoo_id), nombre};
+  await sincronizarPinesGitHub();
+  res.json({ok:true, pin, nombre});
+});
+
+// ── TOKENS DE CONFIRMACIÓN (evita borrados accidentales) ──────────────────────
+const tokensConfirmacion = {};
+
+// Paso 1: solicitar borrado → genera token de 60 segundos
+app.post('/admin/pin/:pin/solicitar-borrado', requireAdmin, (req,res) => {
+  const {pin} = req.params;
+  if (!empleadosPorPIN[pin]) return res.status(404).json({error:'PIN no encontrado'});
+  const token = Math.random().toString(36).substring(2,10).toUpperCase();
+  tokensConfirmacion[pin] = { token, expira: Date.now() + 60000 };
+  const nombre = empleadosPorPIN[pin].nombre;
+  res.json({ok:true, token, nombre, mensaje:`Token válido por 60 segundos. Confirma con DELETE /admin/pin/${pin}?token=${token}`});
+});
+
+// Paso 2: confirmar borrado con token
+app.delete('/admin/pin/:pin', requireAdmin, async (req,res) => {
+  const {pin} = req.params;
+  const {token} = req.query;
+  if (!empleadosPorPIN[pin]) return res.status(404).json({error:'PIN no encontrado'});
+
+  const conf = tokensConfirmacion[pin];
+  if (!conf || conf.token !== token || Date.now() > conf.expira) {
+    return res.status(403).json({error:'Token inválido o expirado. Solicita uno nuevo primero.'});
+  }
+
+  const nombre = empleadosPorPIN[pin].nombre;
+  delete empleadosPorPIN[pin];
+  delete tokensConfirmacion[pin];
+  await sincronizarPinesGitHub();
+  console.log(`[PIN] Eliminado: ${nombre} (PIN: ${pin})`);
+  res.json({ok:true, mensaje:`${nombre} eliminado correctamente`});
 });
 
 app.post('/admin/recargar', requireAdmin, async (req,res) => {
