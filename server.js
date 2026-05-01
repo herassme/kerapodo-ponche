@@ -56,6 +56,18 @@ async function mongoEliminarDescriptor(pin) {
   await mongoDb.collection('descriptores').deleteOne({ pin });
 }
 
+async function mongoRegistrarAlerta(tipo, datos) {
+  if (!mongoDb) return;
+  try {
+    await mongoDb.collection('alertas_seguridad').insertOne({
+      tipo,           // 'pin_incorrecto' | 'face_no_coincide'
+      fecha: new Date().toISOString(),
+      fecha_rd: new Date(Date.now() - 4*3600000).toISOString().replace('T',' ').substring(0,19),
+      ...datos
+    });
+  } catch(e) { console.error('❌ mongoRegistrarAlerta:', e.message); }
+}
+
 // Cache en memoria (para velocidad)
 let descriptoresFaciales = {};
 
@@ -465,6 +477,114 @@ app.get('/', async (req,res) => {
   res.json({ sistema:'Kerapodo Ponche v3.0', estado:'activo', odoo_conexion:uid?'✅':'❌', odoo_error:odooAuthError||null, empleados_cargados:Object.keys(empleadosPorPIN).length, timestamp:new Date().toISOString() });
 });
 
+// ── SISTEMA DE DISPOSITIVOS AUTORIZADOS ──────────────────────────────────────
+const DIAS_EXPIRACION = 120;
+
+async function mongoGetDispositivo(deviceId) {
+  if (!mongoDb) return null;
+  return mongoDb.collection('dispositivos').findOne({ deviceId });
+}
+
+async function mongoGuardarDispositivo(doc) {
+  if (!mongoDb) return;
+  await mongoDb.collection('dispositivos').updateOne(
+    { deviceId: doc.deviceId },
+    { $set: doc },
+    { upsert: true }
+  );
+}
+
+// El kiosko llama esto al cargar — registra el dispositivo y verifica si está autorizado
+app.post('/dispositivo/verificar', async (req,res) => {
+  const { deviceId, userAgent, pantalla } = req.body;
+  if (!deviceId) return res.status(400).json({ok:false, error:'Falta deviceId'});
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+  let doc = await mongoGetDispositivo(deviceId);
+
+  if (!doc) {
+    // Primer acceso — registrar como pendiente
+    doc = {
+      deviceId,
+      estado: 'pendiente',
+      ip, userAgent, pantalla,
+      nombre: null,
+      primera_visita: new Date().toISOString(),
+      ultima_visita:  new Date().toISOString(),
+      autorizado_en:  null,
+      expira_en:      null,
+    };
+    await mongoGuardarDispositivo(doc);
+    console.log(`[DISPOSITIVO] Nuevo dispositivo pendiente: ${deviceId} — IP: ${ip}`);
+    return res.json({ ok:false, estado:'pendiente', mensaje:'Dispositivo pendiente de autorización' });
+  }
+
+  // Actualizar última visita e IP
+  await mongoDb.collection('dispositivos').updateOne(
+    { deviceId },
+    { $set: { ultima_visita: new Date().toISOString(), ip, userAgent } }
+  );
+
+  if (doc.estado === 'rechazado') {
+    return res.json({ ok:false, estado:'rechazado', mensaje:'Dispositivo rechazado por el administrador' });
+  }
+
+  if (doc.estado === 'autorizado') {
+    // Verificar expiración
+    if (doc.expira_en && new Date() > new Date(doc.expira_en)) {
+      await mongoDb.collection('dispositivos').updateOne(
+        { deviceId }, { $set: { estado:'expirado' } }
+      );
+      return res.json({ ok:false, estado:'expirado', mensaje:`Autorización expirada. Solicita renovación al administrador.` });
+    }
+    return res.json({ ok:true, estado:'autorizado', nombre: doc.nombre, expira_en: doc.expira_en });
+  }
+
+  return res.json({ ok:false, estado: doc.estado, mensaje:'Dispositivo pendiente de autorización' });
+});
+
+// Admin: listar todos los dispositivos
+app.get('/admin/dispositivos', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.json({ok:true, dispositivos:[]});
+  try {
+    const dispositivos = await mongoDb.collection('dispositivos')
+      .find({}).sort({primera_visita:-1}).toArray();
+    res.json({ok:true, total:dispositivos.length, dispositivos});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Admin: autorizar dispositivo
+app.post('/admin/dispositivos/:deviceId/autorizar', requireAdmin, async (req,res) => {
+  const { deviceId } = req.params;
+  const { nombre } = req.body;
+  const expira = new Date(Date.now() + DIAS_EXPIRACION * 24 * 3600 * 1000).toISOString();
+  await mongoDb.collection('dispositivos').updateOne(
+    { deviceId },
+    { $set: { estado:'autorizado', nombre: nombre||'Tablet Kerapodo', autorizado_en: new Date().toISOString(), expira_en: expira } }
+  );
+  console.log(`[DISPOSITIVO] Autorizado: ${deviceId} — expira: ${expira}`);
+  res.json({ok:true, expira_en: expira});
+});
+
+// Admin: rechazar dispositivo
+app.post('/admin/dispositivos/:deviceId/rechazar', requireAdmin, async (req,res) => {
+  const { deviceId } = req.params;
+  await mongoDb.collection('dispositivos').updateOne(
+    { deviceId }, { $set: { estado:'rechazado' } }
+  );
+  console.log(`[DISPOSITIVO] Rechazado: ${deviceId}`);
+  res.json({ok:true});
+});
+
+// Admin: revocar autorización
+app.post('/admin/dispositivos/:deviceId/revocar', requireAdmin, async (req,res) => {
+  const { deviceId } = req.params;
+  await mongoDb.collection('dispositivos').updateOne(
+    { deviceId }, { $set: { estado:'pendiente', autorizado_en:null, expira_en:null } }
+  );
+  res.json({ok:true});
+});
+
 // Servir kiosko HTML
 app.get('/kiosko', (req,res) => res.sendFile(__dirname + '/kiosko.html'));
 
@@ -532,7 +652,31 @@ app.delete('/admin/facial/:pin', requireAdmin, async (req,res) => {
   res.json({ok:true, mensaje:`Descriptor de ${nombre||pin} eliminado`});
 });
 
-// ── ESTADO DEL EMPLEADO (para que el kiosko sepa qué botón mostrar) ───────────
+// ── ALERTAS DE SEGURIDAD ──────────────────────────────────────────────────────
+// El kiosko llama esto cuando face ID no coincide
+app.post('/alerta/face-no-coincide', async (req,res) => {
+  const { pin, nombre_empleado } = req.body;
+  if (!pin) return res.status(400).json({ok:false});
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ua = req.headers['user-agent'] || 'desconocido';
+  console.log(`[ALERTA] Face ID no coincide — PIN: ${pin} (${nombre_empleado}) — IP: ${ip}`);
+  await mongoRegistrarAlerta('face_no_coincide', {
+    pin: String(pin),
+    nombre_empleado: nombre_empleado || 'desconocido',
+    ip, user_agent: ua
+  });
+  res.json({ok:true});
+});
+
+// Ver alertas (solo admin)
+app.get('/admin/alertas', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.json({ok:true, alertas:[]});
+  try {
+    const alertas = await mongoDb.collection('alertas_seguridad')
+      .find({}).sort({fecha:-1}).limit(200).toArray();
+    res.json({ok:true, total:alertas.length, alertas});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
 app.post('/estado', async (req,res) => {
   const {pin} = req.body;
   if (!pin) return res.status(400).json({error:'Falta PIN'});
@@ -586,7 +730,14 @@ app.post('/ponche', async (req,res) => {
   if (!/^\d{1,10}$/.test(String(pin))) return res.status(400).json({ok:false,error:'PIN inválido'});
   if (Object.keys(empleadosPorPIN).length===0) await cargarPinesDesdeGitHub();
   const e = empleadosPorPIN[pin];
-  if (!e) return res.status(404).json({ok:false,error:'PIN incorrecto'});
+  if (!e) {
+    mongoRegistrarAlerta('pin_incorrecto', {
+      pin: String(pin),
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+      user_agent: req.headers['user-agent'] || 'desconocido'
+    });
+    return res.status(404).json({ok:false,error:'PIN incorrecto'});
+  }
 
   try {
     const ahora   = ahoraUTC();
