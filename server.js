@@ -652,6 +652,85 @@ app.delete('/admin/facial/:pin', requireAdmin, async (req,res) => {
   res.json({ok:true, mensaje:`Descriptor de ${nombre||pin} eliminado`});
 });
 
+// ── SINCRONIZACIÓN OFFLINE ────────────────────────────────────────────────────
+app.post('/sync-offline', requireAdmin, async (req,res) => {
+  const { ponches } = req.body;
+  if (!Array.isArray(ponches) || !ponches.length) return res.json({ok:true, sincronizados:0, conflictos:0});
+
+  let sincronizados = 0, conflictos = 0;
+  const resultados = [];
+
+  // Ordenar cronológicamente antes de procesar
+  ponches.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  for (const p of ponches) {
+    try {
+      const e = empleadosPorPIN[p.pin];
+      if (!e) { resultados.push({...p, estado:'error', msg:'PIN no encontrado'}); conflictos++; continue; }
+
+      // Timestamp en formato Odoo UTC
+      const ts  = new Date(p.timestamp);
+      const pad = n => String(n).padStart(2,'0');
+      const tsOdoo = `${ts.getUTCFullYear()}-${pad(ts.getUTCMonth()+1)}-${pad(ts.getUTCDate())} ${pad(ts.getUTCHours())}:${pad(ts.getUTCMinutes())}:${pad(ts.getUTCSeconds())}`;
+
+      // Verificar si ya existe un registro en ese momento exacto (evitar duplicados)
+      const ventana = new Date(ts);
+      ventana.setMinutes(ventana.getMinutes() - 2);
+      const ventanaOdoo = `${ventana.getUTCFullYear()}-${pad(ventana.getUTCMonth()+1)}-${pad(ventana.getUTCDate())} ${pad(ventana.getUTCHours())}:${pad(ventana.getUTCMinutes())}:${pad(ventana.getUTCSeconds())}`;
+
+      const xmlExistente = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+        [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+          [[['employee_id','=',e.odoo_id],['check_in','>=',ventanaOdoo],['check_in','<=',tsOdoo]]],
+          {fields:['id'], limit:1}
+        ]
+      );
+      const existente = parseAttendanceXml(xmlExistente);
+      if (existente.length > 0) {
+        resultados.push({...p, estado:'duplicado', msg:'Ya existe un registro cercano en Odoo'});
+        conflictos++;
+        continue;
+      }
+
+      // Buscar si tiene entrada abierta
+      const xmlAbierto = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+        [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+          [[['employee_id','=',e.odoo_id],['check_out','=',false]]],
+          {fields:['id','check_in'], order:'check_in desc', limit:1}
+        ]
+      );
+      const abiertos = parseAttendanceXml(xmlAbierto);
+      const tieneAbierto = abiertos.length > 0;
+
+      if (!tieneAbierto) {
+        // Entrada
+        const id = await odooExecute('hr.attendance','create',[{ employee_id: e.odoo_id, check_in: tsOdoo }]);
+        if (id) { sincronizados++; resultados.push({...p, estado:'ok', odoo_id:id}); }
+        else { conflictos++; resultados.push({...p, estado:'conflicto', msg:'Odoo rechazó la entrada'}); }
+      } else {
+        // Salida
+        const regId = parseInt(abiertos[0].id);
+        await odooExecute('hr.attendance','write',[[regId],{check_out:tsOdoo}]);
+        sincronizados++;
+        resultados.push({...p, estado:'ok', odoo_id:regId});
+      }
+    } catch(err) {
+      conflictos++;
+      resultados.push({...p, estado:'error', msg:err.message});
+    }
+  }
+
+  // Guardar conflictos en MongoDB para revisión
+  if (conflictos > 0 && mongoDb) {
+    await mongoDb.collection('offline_conflictos').insertOne({
+      fecha: new Date().toISOString(),
+      resultados: resultados.filter(r => r.estado !== 'ok')
+    });
+  }
+
+  console.log(`[SYNC-OFFLINE] ${sincronizados} sincronizados, ${conflictos} conflictos`);
+  res.json({ok:true, sincronizados, conflictos, resultados});
+});
+
 // ── ALERTAS DE SEGURIDAD ──────────────────────────────────────────────────────
 // El kiosko llama esto cuando face ID no coincide
 app.post('/alerta/face-no-coincide', async (req,res) => {
