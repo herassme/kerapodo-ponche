@@ -1073,6 +1073,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--gray
       </div>
       <div class="hold-hint">Mantener presionado para acceso administrativo</div>
       <div class="hold-bar"><div class="hold-bar-fill" id="hold-bar-fill"></div></div>
+      <!-- Badge offline -->
+      <div id="offline-badge" style="display:none;font-size:10px;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);border-radius:6px;padding:4px 10px;margin-top:6px;text-align:center;position:relative;z-index:1"></div>
+      <div id="offline-status" style="display:none;font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;text-align:center;position:relative;z-index:1">📡 Sin conexión — modo offline activo</div>
     </div>
 
     <!-- Body con PIN -->
@@ -1613,19 +1616,105 @@ function cancelarRegistro() {
 }
 
 // ══ ENVIAR PONCHE ══════════════════════════════════════════════════
+// ══ OFFLINE QUEUE ══════════════════════════════════════════════════
+const OFFLINE_KEY = 'kp_offline_queue';
+
+function offlineGuardar(ponche) {
+  try {
+    const q = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    q.push(ponche);
+    localStorage.setItem(OFFLINE_KEY, JSON.stringify(q));
+  } catch(e) {}
+}
+
+function offlineObtener() {
+  try { return JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function offlineLimpiar() {
+  localStorage.removeItem(OFFLINE_KEY);
+}
+
+async function sincronizarOffline() {
+  const q = offlineObtener();
+  if (!q.length) return;
+  try {
+    const r = await fetch(`${CONFIG.servidor}/sync-offline`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+      body: JSON.stringify({ ponches: q })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      offlineLimpiar();
+      console.log(`[OFFLINE] ${d.sincronizados} ponches sincronizados, ${d.conflictos} conflictos`);
+      if (d.conflictos > 0) {
+        // Mostrar aviso discreto al admin
+        const aviso = document.getElementById('offline-badge');
+        if (aviso) { aviso.textContent = `⚠️ ${d.conflictos} ponche(s) offline requieren revisión`; aviso.style.display = 'block'; }
+      }
+    }
+  } catch(e) { /* sin conexión aún, reintentará */ }
+}
+
+// Intentar sincronizar cada 30 segundos
+setInterval(sincronizarOffline, 30000);
+// También al recuperar conexión
+window.addEventListener('online', () => {
+  document.getElementById('offline-status').style.display = 'none';
+  setTimeout(sincronizarOffline, 2000);
+});
+window.addEventListener('offline', () => {
+  document.getElementById('offline-status').style.display = 'block';
+});
+
 async function enviarPonche(pinEmp, estadoEmp) {
   const info = ACCIONES[estadoEmp];
   if (!info || !info.key) return;
+
+  const ahora = new Date();
+  const hora  = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
+  const timestamp = ahora.toISOString();
+
   try {
-    const r = await fetch(`${CONFIG.servidor}/ponche`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey}, body: JSON.stringify({pin:pinEmp, accion:info.key}) });
+    const r = await fetch(`${CONFIG.servidor}/ponche`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+      body: JSON.stringify({pin:pinEmp, accion:info.key})
+    });
     const d = await r.json();
-    const ahora = new Date();
-    const hora = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
     if (d.ok) mostrarResultado(info.svgPath, d.nombre, info.label, info.clase, 5, hora, d.alertas||[]);
     else mostrarResultado(null, 'Error', d.error||'Intenta de nuevo', 'error', 3, '');
-  } catch(e) { mostrarResultado(null, 'Sin conexión', 'Verifica el WiFi', 'error', 3, ''); }
+  } catch(e) {
+    // Sin conexión — guardar offline
+    const nombre = empleadosPorPINLocal[pinEmp] || 'Empleado';
+    offlineGuardar({ pin: pinEmp, accion: info.key, timestamp, nombre });
+    mostrarResultado(
+      info.svgPath, nombre,
+      `${info.label} (sin conexión)`,
+      info.clase, 5, hora,
+      ['⚡ Guardado localmente — se sincronizará al reconectar']
+    );
+  }
   resetPIN();
 }
+
+// Cache local de nombres para mostrar en modo offline
+let empleadosPorPINLocal = {};
+async function cargarNombresLocal() {
+  try {
+    const r = await fetch(`${CONFIG.servidor}/admin/empleados`, { headers:{'x-admin-key':CONFIG.adminKey} });
+    const d = await r.json();
+    (d.empleados||[]).forEach(e => { empleadosPorPINLocal[e.pin] = e.nombre; });
+    localStorage.setItem('kp_nombres', JSON.stringify(empleadosPorPINLocal));
+  } catch(e) {
+    // Cargar desde cache si no hay conexión
+    try { empleadosPorPINLocal = JSON.parse(localStorage.getItem('kp_nombres')||'{}'); } catch(e2) {}
+  }
+}
+// Cargar nombres al iniciar y cada 10 minutos
+setTimeout(cargarNombresLocal, 3000);
+setInterval(cargarNombresLocal, 10 * 60 * 1000);
 
 // ══ RESULTADO ══════════════════════════════════════════════════════
 let overlayTimer = null;
