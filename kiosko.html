@@ -1435,9 +1435,81 @@ function resetPIN() {
   btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Registrar';
 }
 
+// ══ BLOQUEO POR INTENTOS FALLIDOS ═════════════════════════════════
+let intentosFallidos = 0;
+const MAX_INTENTOS   = 5;
+const BLOQUEO_MS     = 60 * 1000; // 1 minuto
+let bloqueadoHasta   = null;
+let bloqueoInterval  = null;
+
+function verificarBloqueo() {
+  if (!bloqueadoHasta) return false;
+  if (Date.now() >= bloqueadoHasta) {
+    bloqueadoHasta   = null;
+    intentosFallidos = 0;
+    clearInterval(bloqueoInterval);
+    bloqueoInterval  = null;
+    ocultarPantallaBloqueo();
+    return false;
+  }
+  return true;
+}
+
+function mostrarPantallaBloqueo() {
+  const overlay = document.getElementById('overlay');
+  const card    = document.getElementById('result-card');
+
+  // Reutilizar el overlay de resultado para mostrar el bloqueo
+  document.getElementById('result-icon').className = 'result-icon error';
+  document.getElementById('result-svg').innerHTML  =
+    '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+  document.getElementById('result-name').textContent  = 'Terminal bloqueada';
+  document.getElementById('result-badge').textContent = '5 intentos fallidos';
+  document.getElementById('result-badge').className   = 'result-badge error';
+  document.getElementById('result-alerts').innerHTML  = '';
+  card.className = 'result-card error';
+  overlay.classList.add('show');
+
+  // Actualizar cuenta regresiva
+  function actualizarCuenta() {
+    const restante = Math.max(0, Math.ceil((bloqueadoHasta - Date.now()) / 1000));
+    document.getElementById('result-time').textContent = `${restante}s`;
+    if (restante <= 0) {
+      ocultarPantallaBloqueo();
+      clearInterval(bloqueoInterval);
+    }
+  }
+  actualizarCuenta();
+  bloqueoInterval = setInterval(actualizarCuenta, 500);
+}
+
+function ocultarPantallaBloqueo() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('result-time').textContent = '';
+}
+
+function registrarIntentioFallido() {
+  intentosFallidos++;
+  if (intentosFallidos >= MAX_INTENTOS) {
+    bloqueadoHasta = Date.now() + BLOQUEO_MS;
+    mostrarPantallaBloqueo();
+    // Reportar al servidor
+    fetch(`${CONFIG.servidor}/alerta/bloqueo-terminal`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ ip: 'local', sucursal: CONFIG.sucursal||'N/A' })
+    }).catch(()=>{});
+  }
+}
+
+function registrarExito() {
+  intentosFallidos = 0;
+}
+
 // ══ FLUJO PRINCIPAL ════════════════════════════════════════════════
 async function iniciarFlujo() {
   if (procesando || pin.length < 4) return;
+  if (verificarBloqueo()) return; // Terminal bloqueada
+
   procesando = true;
   const btn = document.getElementById('btn-action');
   btn.classList.add('loading'); btn.textContent = 'Verificando...';
@@ -1446,8 +1518,12 @@ async function iniciarFlujo() {
     const r = await fetch(`${CONFIG.servidor}/estado`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey}, body: JSON.stringify({pin}) });
     const d = await r.json();
 
-    if (!d.ok) { mostrarResultado(null, 'PIN incorrecto', d.error||'Verifica tu PIN e intenta de nuevo', 'error', 3, ''); resetPIN(); return; }
-    if (d.estado === 'salio') { mostrarResultado(null, d.nombre, 'Jornada completada', 'salida_final', 4, ''); resetPIN(); return; }
+    if (!d.ok) {
+      registrarIntentioFallido();
+      mostrarResultado(null, 'PIN incorrecto', d.error||'Verifica tu PIN e intenta de nuevo', 'error', 3, '');
+      resetPIN(); return;
+    }
+    if (d.estado === 'salio') { registrarExito(); mostrarResultado(null, d.nombre, 'Jornada completada', 'salida_final', 4, ''); resetPIN(); return; }
 
     const pinG = pin, nombreG = d.nombre, estadoG = d.estado;
     btn.classList.remove('loading'); procesando = false;
@@ -1455,12 +1531,13 @@ async function iniciarFlujo() {
     const descriptor = await getDescriptor(pinG);
     if (descriptor) {
       const ok = await verificarRostro(pinG, nombreG, descriptor);
-      if (!ok) { resetPIN(); return; }
+      if (!ok) { registrarIntentioFallido(); resetPIN(); return; }
     } else {
       const reg = await flujoRegistroFacial(pinG, nombreG);
       if (!reg) { resetPIN(); return; }
     }
 
+    registrarExito();
     await enviarPonche(pinG, estadoG);
   } catch(e) {
     mostrarResultado(null, 'Sin conexión', 'Verifica el WiFi e intenta de nuevo', 'error', 3, '');
@@ -1871,8 +1948,8 @@ async function renderTabSeguridad() {
 
     const estadoColor = { autorizado:'var(--green)', pendiente:'var(--amber)', rechazado:'var(--red)', expirado:'var(--gray-400)' };
     const estadoLabel = { autorizado:'✅ Autorizado', pendiente:'⏳ Pendiente', rechazado:'🚫 Rechazado', expirado:'⌛ Expirado' };
-    const tipoLabel   = { pin_incorrecto:'❌ PIN incorrecto', face_no_coincide:'👤 Face ID no coincide' };
-    const tipoColor   = { pin_incorrecto:'var(--amber)', face_no_coincide:'var(--red)' };
+    const tipoLabel   = { pin_incorrecto:'PIN incorrecto', face_no_coincide:'Face ID no coincide', bloqueo_terminal:'Terminal bloqueada' };
+    const tipoColor   = { pin_incorrecto:'var(--amber)', face_no_coincide:'var(--red)', bloqueo_terminal:'var(--red)' };
 
     c.innerHTML = `
       <!-- DISPOSITIVOS -->
