@@ -623,6 +623,19 @@ body::before {
         Sin registro
         <span class="ftab-count" id="fc-ausente">—</span>
       </button>
+      <!-- Separador -->
+      <div style="width:1px;background:rgba(255,255,255,.15);margin:4px 4px;flex-shrink:0"></div>
+      <!-- Filtro sucursal -->
+      <select id="f-sucursal" onchange="filtrarSucursal(this.value)"
+        style="font-size:11px;font-weight:500;padding:5px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);cursor:pointer;font-family:var(--font-body);outline:none;transition:all .15s">
+        <option value="">Todas las sucursales</option>
+        <option>Sucursal Churchill</option>
+        <option>Sucursal Megacentro</option>
+        <option>Sucursal Oeste</option>
+        <option>Sucursal Villa Mella</option>
+        <option>Sucursal San Isidro</option>
+        <option>Sucursal Santiago</option>
+      </select>
     </div>
   </div>
 
@@ -686,7 +699,7 @@ const MESES  = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto
 const ORDEN  = {trabajando:0, almuerzo:1, salio:2, ausente:3};
 const BLABEL = {trabajando:'Activo', almuerzo:'Almuerzo', salio:'Salió', ausente:'Ausente'};
 
-let adminKey = '', filtroActivo = 'todos', todosEmpleados = [];
+let adminKey = '', filtroActivo = 'todos', filtroSucursal = '', todosEmpleados = [];
 
 // ── Reloj ─────────────────────────────────────────────────────────────────────
 function tick() {
@@ -772,6 +785,11 @@ function filtrar(tipo) {
   renderEmpleados();
 }
 
+function filtrarSucursal(val) {
+  filtroSucursal = val;
+  renderEmpleados();
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 // SVG icons
 const ICO_ENTRY = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
@@ -780,9 +798,9 @@ const ICO_WARN  = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" s
 const ICO_ALM   = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
 
 function renderEmpleados() {
-  const lista = filtroActivo === 'todos'
-    ? [...todosEmpleados]
-    : todosEmpleados.filter(e => e.estado === filtroActivo);
+  const lista = todosEmpleados
+    .filter(e => filtroActivo === 'todos' || e.estado === filtroActivo)
+    .filter(e => !filtroSucursal || e.sucursal === filtroSucursal);
 
   lista.sort((a,b) =>
     (ORDEN[a.estado]||0) - (ORDEN[b.estado]||0) ||
@@ -802,6 +820,8 @@ function renderEmpleados() {
   grid.innerHTML = lista.map((e, i) => {
     const nombreCorto = e.nombre.split(' ').slice(0,2).join(' ');
     const excedido    = e.almuerzoExcedido ? 'excedido' : '';
+    const sucursalTag = e.sucursal
+      ? `<div style="font-size:9px;color:var(--gray-400);letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px">${e.sucursal.replace('Sucursal ','')}</div>` : '';
 
     // Tarde badge
     const tarde = e.tardanza > 0
@@ -835,6 +855,7 @@ function renderEmpleados() {
           <div class="ename">${nombreCorto}</div>
           <span class="ebadge">${BLABEL[e.estado]||e.estado}</span>
         </div>
+        ${sucursalTag}
         ${ausLabel}
         ${e.estado !== 'ausente' ? `<div class="ehoras">${e.horas}</div>` : ''}
         <div class="ediv"></div>
