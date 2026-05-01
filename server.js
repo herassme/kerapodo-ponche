@@ -537,7 +537,7 @@ app.post('/dispositivo/verificar', async (req,res) => {
       );
       return res.json({ ok:false, estado:'expirado', mensaje:`Autorización expirada. Solicita renovación al administrador.` });
     }
-    return res.json({ ok:true, estado:'autorizado', nombre: doc.nombre, expira_en: doc.expira_en });
+    return res.json({ ok:true, estado:'autorizado', nombre: doc.nombre, sucursal: doc.sucursal||null, expira_en: doc.expira_en });
   }
 
   return res.json({ ok:false, estado: doc.estado, mensaje:'Dispositivo pendiente de autorización' });
@@ -556,14 +556,28 @@ app.get('/admin/dispositivos', requireAdmin, async (req,res) => {
 // Admin: autorizar dispositivo
 app.post('/admin/dispositivos/:deviceId/autorizar', requireAdmin, async (req,res) => {
   const { deviceId } = req.params;
-  const { nombre } = req.body;
+  const { nombre, sucursal } = req.body;
+
+  // Validar unicidad de sucursal (excepto Sucursal Prueba)
+  if (sucursal && sucursal !== 'Sucursal Prueba' && mongoDb) {
+    const yaOcupada = await mongoDb.collection('dispositivos').findOne({
+      sucursal, estado:'autorizado', deviceId:{ $ne: deviceId }
+    });
+    if (yaOcupada) {
+      return res.status(409).json({
+        ok:false,
+        error:`La ${sucursal} ya está asignada al dispositivo "${yaOcupada.nombre||yaOcupada.deviceId}". Desvincúlala primero.`
+      });
+    }
+  }
+
   const expira = new Date(Date.now() + DIAS_EXPIRACION * 24 * 3600 * 1000).toISOString();
   await mongoDb.collection('dispositivos').updateOne(
     { deviceId },
-    { $set: { estado:'autorizado', nombre: nombre||'Tablet Kerapodo', autorizado_en: new Date().toISOString(), expira_en: expira } }
+    { $set: { estado:'autorizado', nombre: nombre||'Tablet Kerapodo', sucursal: sucursal||null, autorizado_en: new Date().toISOString(), expira_en: expira } }
   );
-  console.log(`[DISPOSITIVO] Autorizado: ${deviceId} — expira: ${expira}`);
-  res.json({ok:true, expira_en: expira});
+  console.log(`[DISPOSITIVO] Autorizado: ${deviceId} — sucursal: ${sucursal||'N/A'} — expira: ${expira}`);
+  res.json({ok:true, expira_en: expira, sucursal: sucursal||null});
 });
 
 // Admin: rechazar dispositivo
@@ -583,6 +597,67 @@ app.post('/admin/dispositivos/:deviceId/revocar', requireAdmin, async (req,res) 
     { deviceId }, { $set: { estado:'pendiente', autorizado_en:null, expira_en:null } }
   );
   res.json({ok:true});
+});
+
+// Admin: asignar/cambiar sucursal (con validación de unicidad)
+app.post('/admin/dispositivos/:deviceId/sucursal', requireAdmin, async (req,res) => {
+  const { deviceId } = req.params;
+  const { sucursal } = req.body;
+  if (!sucursal) return res.status(400).json({error:'Falta sucursal'});
+
+  if (mongoDb && sucursal !== 'Sucursal Prueba') {
+    const yaOcupada = await mongoDb.collection('dispositivos').findOne({
+      sucursal, estado:'autorizado', deviceId:{ $ne: deviceId }
+    });
+    if (yaOcupada) {
+      return res.status(409).json({
+        ok:false,
+        error:`La ${sucursal} ya está asignada a "${yaOcupada.nombre||yaOcupada.deviceId}". Desvincúlala primero.`
+      });
+    }
+  }
+
+  await mongoDb.collection('dispositivos').updateOne(
+    { deviceId }, { $set: { sucursal } }
+  );
+  res.json({ok:true, sucursal});
+});
+
+// Admin: desvincular sucursal (requiere contraseña admin)
+app.post('/admin/dispositivos/:deviceId/desvincular-sucursal', requireAdmin, async (req,res) => {
+  const { deviceId } = req.params;
+  const { confirm_key } = req.body;
+  if (confirm_key !== ADMIN_KEY) {
+    return res.status(403).json({ok:false, error:'Contraseña incorrecta'});
+  }
+  await mongoDb.collection('dispositivos').updateOne(
+    { deviceId }, { $set: { sucursal: null } }
+  );
+  console.log(`[DISPOSITIVO] Sucursal desvinculada: ${deviceId}`);
+  res.json({ok:true});
+});
+
+// Lista de sucursales disponibles
+const SUCURSALES = [
+  'Sucursal Churchill',
+  'Sucursal Megacentro',
+  'Sucursal Oeste',
+  'Sucursal Villa Mella',
+  'Sucursal San Isidro',
+  'Sucursal Santiago',
+  'Sucursal Prueba',
+];
+
+app.get('/sucursales', (req,res) => res.json({sucursales: SUCURSALES}));
+
+// Ver qué sucursales ya están ocupadas
+app.get('/admin/sucursales-ocupadas', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.json({ok:true, ocupadas:[]});
+  const docs = await mongoDb.collection('dispositivos')
+    .find({ estado:'autorizado', sucursal:{ $ne:null } })
+    .toArray();
+  const ocupadas = docs.map(d => ({ sucursal: d.sucursal, deviceId: d.deviceId, nombre: d.nombre }));
+  res.json({ok:true, ocupadas});
 });
 
 // Servir kiosko HTML
@@ -804,7 +879,7 @@ app.post('/estado', async (req,res) => {
 
 // ── PONCHE PRINCIPAL ──────────────────────────────────────────────────────────
 app.post('/ponche', async (req,res) => {
-  const {pin, accion} = req.body;
+  const {pin, accion, sucursal} = req.body;
   if (!pin) return res.status(400).json({ok:false,error:'Falta PIN'});
   if (!/^\d{1,10}$/.test(String(pin))) return res.status(400).json({ok:false,error:'PIN inválido'});
   if (Object.keys(empleadosPorPIN).length===0) await cargarPinesDesdeGitHub();
@@ -862,10 +937,10 @@ app.post('/ponche', async (req,res) => {
       mensaje = 'SALIDA REGISTRADA';
     }
 
-    console.log(`[PONCHE] ${e.nombre} → ${tieneAbierto ? 'SALIDA' : 'ENTRADA'} | ${ahora} | id: ${attendance_id}`);
+    console.log(`[PONCHE] ${e.nombre} → ${tieneAbierto ? 'SALIDA' : 'ENTRADA'} | ${ahora} | id: ${attendance_id} | sucursal: ${sucursal||'N/A'}`);
 
     const tipo = tieneAbierto ? 'salida' : 'entrada';
-    return res.json({ ok: true, tipo, mensaje, nombre: e.nombre, hora: horaRD, attendance_id, alertas });
+    return res.json({ ok: true, tipo, mensaje, nombre: e.nombre, hora: horaRD, attendance_id, alertas, sucursal: sucursal||null });
 
   } catch(err) {
     console.error('[ERROR]', err.message);
@@ -1211,6 +1286,7 @@ app.get('/admin/en-vivo', requireAdmin, async (req,res) => {
   try {
     if (!odooUID) await odooLogin();
     const inicioStr = inicioDiaUTC();
+    const { sucursal } = req.query; // filtro opcional
 
     // Traer todos los registros de hoy
     const xmlHoy = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
@@ -1305,17 +1381,19 @@ app.get('/admin/en-vivo', requireAdmin, async (req,res) => {
 
       const horas = `${Math.floor(minutosTotal/60)}h ${minutosTotal%60}m`;
 
-      return { id:emp.id, nombre:emp.nombre, estado, horaEntrada, horaSalida, horas, minutosTotal, tardanza, minAlmuerzo, almuerzoFmt, almuerzoExcedido, almuerzoEnCurso };
+      return { id:emp.id, nombre:emp.nombre, estado, horaEntrada, horaSalida, horas, minutosTotal, tardanza, minAlmuerzo, almuerzoFmt, almuerzoExcedido, almuerzoEnCurso, sucursal: empleadosPorPIN[Object.keys(empleadosPorPIN).find(k => empleadosPorPIN[k].odoo_id === emp.id)]?.sucursal || null };
     });
 
     // Empleados con PIN que no han llegado
     const idsTrabajando = new Set(Object.keys(porEmp).map(Number));
     const noLlegaron = Object.values(empleadosPorPIN)
       .filter(e => !idsTrabajando.has(e.odoo_id) && minAhora > minEntrada)
-      .map(e => ({ id:e.odoo_id, nombre:e.nombre, estado:'ausente', horaEntrada:null, horaSalida:null, horas:'0h', minutosTotal:0, tardanza:0 }));
+      .map(e => ({ id:e.odoo_id, nombre:e.nombre, estado:'ausente', horaEntrada:null, horaSalida:null, horas:'0h', minutosTotal:0, tardanza:0, minAlmuerzo:0, almuerzoFmt:null, almuerzoExcedido:false, almuerzoEnCurso:false, sucursal: e.sucursal||null }));
 
-    const todos = [...empleados, ...noLlegaron].sort((a,b) => a.nombre.localeCompare(b.nombre));
+    let todos = [...empleados, ...noLlegaron].sort((a,b) => a.nombre.localeCompare(b.nombre));
 
+    // Filtrar por sucursal si se especifica — basado en pines.json si tienen sucursal asignada
+    // Por ahora el filtro aplica a nivel de dispositivo en el dashboard
     const resumen = {
       trabajando: todos.filter(e=>e.estado==='trabajando').length,
       almuerzo:   todos.filter(e=>e.estado==='almuerzo').length,
@@ -1324,7 +1402,7 @@ app.get('/admin/en-vivo', requireAdmin, async (req,res) => {
       total:      todos.length
     };
 
-    res.json({ ok:true, hora: ahoraRDStr, horario, resumen, empleados:todos });
+    res.json({ ok:true, hora: ahoraRDStr, horario, resumen, empleados:todos, sucursales: SUCURSALES });
   } catch(e) {
     console.error('[EN-VIVO]', e.message);
     res.status(500).json({error:e.message});
@@ -1338,9 +1416,9 @@ app.get('/admin/empleados', requireAdmin, (req,res) => {
 
 // Crear o actualizar PIN
 app.post('/admin/pin', requireAdmin, async (req,res) => {
-  const {odoo_id, nombre, pin} = req.body;
+  const {odoo_id, nombre, pin, sucursal} = req.body;
   if (!odoo_id||!nombre||!pin) return res.status(400).json({error:'Faltan datos'});
-  empleadosPorPIN[String(pin)] = {odoo_id:parseInt(odoo_id), nombre};
+  empleadosPorPIN[String(pin)] = {odoo_id:parseInt(odoo_id), nombre, sucursal: sucursal||null};
   await sincronizarPinesGitHub();
   res.json({ok:true, pin, nombre});
 });
