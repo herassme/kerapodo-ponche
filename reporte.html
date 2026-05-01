@@ -494,6 +494,7 @@ function renderEmp(e) {
           if(d.sin_almuerzo) bs.push('<span class="dia-badge" style="background:var(--amber-pale);color:var(--amber)">Sin alm.</span>');
           if(d.desc_exceso>0) bs.push('<span class="dia-badge" style="background:var(--amber-pale);color:var(--amber)">+'+d.desc_exceso+'m exc.</span>');
           if(d.banco_extra>0) bs.push('<span class="dia-badge" style="background:var(--green-pale);color:var(--green)">+'+d.banco_extra+'m extra</span>');
+          if(d.auto_clockout) bs.push('<span class="dia-badge" style="background:var(--sky-pale);color:var(--sky)">Salida automática</span>');
           if(!bs.length) bs.push('<span class="dia-badge" style="background:var(--green-pale);color:var(--green)">OK</span>');
           const alm=d.dur_almuerzo>0?(Math.floor(d.dur_almuerzo/60)?Math.floor(d.dur_almuerzo/60)+'h ':'')+(d.dur_almuerzo%60)+'m':'—';
           return '<tr>'
