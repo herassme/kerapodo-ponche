@@ -1848,6 +1848,7 @@ async function adminLogin() {
     const d = await r.json();
     if (d.ok) {
       CONFIG.adminKey = pass; localStorage.setItem('kp_adminKey', pass);
+      sessionStorage.setItem('rp_key', pass); // permite sesión en reporte.html
       adminAutenticado = true; err.textContent = '';
       document.getElementById('admin-login-sheet').style.display = 'none';
       document.getElementById('admin-panel-sheet').style.display = 'flex';
