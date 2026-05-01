@@ -1063,7 +1063,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--gray
           <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.7)" stroke-width="1.6" fill="none"/>
         </svg>
       </div>
-      <div class="logo-tagline" style="position:relative;z-index:1">Cuidado de pies · Control de Asistencia</div>
+      <div class="logo-tagline" style="position:relative;z-index:1" id="tagline-sucursal">Cuidado de pies · Control de Asistencia</div>
 
       <div class="clock-block">
         <div class="clock-time">
@@ -1182,6 +1182,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--gray
 let CONFIG = {
   servidor: localStorage.getItem('kp_servidor') || window.location.origin,
   adminKey:  localStorage.getItem('kp_adminKey') || '',
+  sucursal:  localStorage.getItem('kp_sucursal') || null,
 };
 let descriptoresFaciales = {};
 let modelsLoaded = false;
@@ -1220,6 +1221,11 @@ window.addEventListener('load', async () => {
     const d = await r.json();
 
     if (d.ok && d.estado === 'autorizado') {
+      // Autorizado — guardar sucursal si viene
+      if (d.sucursal) {
+        CONFIG.sucursal = d.sucursal;
+        localStorage.setItem('kp_sucursal', d.sucursal);
+      }
       // Autorizado — mostrar kiosko
       document.getElementById('screen-auth').classList.remove('show');
       mostrarKiosko();
@@ -1250,6 +1256,9 @@ window.addEventListener('load', async () => {
 function mostrarKiosko() {
   ['screen-auth','screen-registro','screen-cam'].forEach(id => document.getElementById(id).classList.remove('show'));
   document.getElementById('app').style.display = 'flex';
+  // Mostrar sucursal en tagline
+  const tag = document.getElementById('tagline-sucursal');
+  if (tag) tag.textContent = CONFIG.sucursal || 'Cuidado de pies · Control de Asistencia';
   tick(); setInterval(tick, 1000);
   initHold();
   initTeclado();
@@ -1681,7 +1690,7 @@ async function enviarPonche(pinEmp, estadoEmp) {
     const r = await fetch(`${CONFIG.servidor}/ponche`, {
       method: 'POST',
       headers: {'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
-      body: JSON.stringify({pin:pinEmp, accion:info.key})
+      body: JSON.stringify({pin:pinEmp, accion:info.key, sucursal: CONFIG.sucursal||null})
     });
     const d = await r.json();
     if (d.ok) mostrarResultado(info.svgPath, d.nombre, info.label, info.clase, 5, hora, d.alertas||[]);
@@ -1884,9 +1893,10 @@ async function renderTabSeguridad() {
               <div style="font-size:10px;color:var(--gray-400);margin:3px 0">IP: ${d.ip||'—'} · Expira: ${expira}</div>
               <div style="font-size:9px;color:var(--gray-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(d.userAgent||'').substring(0,55)}</div>
               <div style="display:flex;gap:6px;margin-top:8px">
-                ${d.estado !== 'autorizado' ? `<button onclick="accionDispositivo('${d.deviceId}','autorizar')" style="font-size:11px;padding:4px 10px;background:var(--green-pale);color:var(--green);border:1.5px solid rgba(13,122,85,.2);border-radius:6px;cursor:pointer;font-weight:600">✅ Autorizar</button>` : ''}
-                ${d.estado !== 'rechazado' ? `<button onclick="accionDispositivo('${d.deviceId}','rechazar')" style="font-size:11px;padding:4px 10px;background:var(--red-pale);color:var(--red);border:1.5px solid rgba(192,57,43,.2);border-radius:6px;cursor:pointer;font-weight:600">🚫 Rechazar</button>` : ''}
-                ${d.estado === 'autorizado' ? `<button onclick="accionDispositivo('${d.deviceId}','revocar')" style="font-size:11px;padding:4px 10px;background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200);border-radius:6px;cursor:pointer">⏸ Revocar</button>` : ''}
+                ${d.estado !== 'autorizado' ? `<button onclick="accionDispositivo('${d.deviceId}','autorizar')" style="font-size:11px;padding:4px 10px;background:var(--green-pale);color:var(--green);border:1.5px solid rgba(13,122,85,.2);border-radius:6px;cursor:pointer;font-weight:600">Autorizar</button>` : ''}
+                ${d.estado !== 'rechazado' ? `<button onclick="accionDispositivo('${d.deviceId}','rechazar')" style="font-size:11px;padding:4px 10px;background:var(--red-pale);color:var(--red);border:1.5px solid rgba(192,57,43,.2);border-radius:6px;cursor:pointer;font-weight:600">Rechazar</button>` : ''}
+                ${d.estado === 'autorizado' ? `<button onclick="accionDispositivo('${d.deviceId}','revocar')" style="font-size:11px;padding:4px 10px;background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200);border-radius:6px;cursor:pointer">Revocar</button>` : ''}
+                ${d.estado === 'autorizado' && d.sucursal ? `<button onclick="accionDispositivo('${d.deviceId}','desvincular')" style="font-size:11px;padding:4px 10px;background:var(--amber-pale);color:var(--amber);border:1.5px solid rgba(180,83,9,.2);border-radius:6px;cursor:pointer;font-weight:600">Desvincular sucursal</button>` : ''}
               </div>
             </div>`;
           }).join('')
@@ -1919,23 +1929,64 @@ async function renderTabSeguridad() {
 }
 
 async function accionDispositivo(deviceId, accion) {
-  let nombre = null;
   if (accion === 'autorizar') {
-    nombre = prompt('Nombre de este dispositivo (ej: Tablet Sucursal Centro):');
-    if (nombre === null) return; // canceló
+    // Obtener sucursales ocupadas
+    let ocupadas = [];
+    try {
+      const ro = await fetch(`${CONFIG.servidor}/admin/sucursales-ocupadas`, { headers:{'x-admin-key':CONFIG.adminKey} });
+      const do_ = await ro.json();
+      ocupadas = (do_.ocupadas||[]).map(o => o.sucursal);
+    } catch(e) {}
+
+    const todas = ['Sucursal Churchill','Sucursal Megacentro','Sucursal Oeste','Sucursal Villa Mella','Sucursal San Isidro','Sucursal Santiago','Sucursal Prueba'];
+    const disponibles = todas.filter(s => s === 'Sucursal Prueba' || !ocupadas.includes(s));
+
+    const nombre = prompt('Nombre de este dispositivo (ej: Tablet Churchill):');
+    if (nombre === null) return;
+
+    const listaStr = disponibles.map((s,i) => `${i+1}. ${s}`).join('\n');
+    const ocupadasStr = ocupadas.length ? `\n\nOcupadas: ${ocupadas.map(s=>s.replace('Sucursal ','')).join(', ')}` : '';
+    const idx = prompt(`Sucursal disponible:\n${listaStr}${ocupadasStr}\n\nEscribe el número (0 para ninguna):`);
+    const sucursal = idx && parseInt(idx) > 0 ? disponibles[parseInt(idx)-1] : null;
+
+    try {
+      const r = await fetch(`${CONFIG.servidor}/admin/dispositivos/${deviceId}/autorizar`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+        body: JSON.stringify({ nombre, sucursal })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        toast(`Autorizado · ${sucursal||'Sin sucursal asignada'}`, 'ok');
+        renderTabSeguridad();
+      } else toast(d.error || 'Error', 'err');
+    } catch(e) { toast('Error de conexión', 'err'); }
+
+  } else if (accion === 'desvincular') {
+    const pass = prompt('Ingresa la contraseña admin para desvincular la sucursal:');
+    if (pass === null) return;
+    try {
+      const r = await fetch(`${CONFIG.servidor}/admin/dispositivos/${deviceId}/desvincular-sucursal`, {
+        method:'POST', headers:{'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+        body: JSON.stringify({ confirm_key: pass })
+      });
+      const d = await r.json();
+      if (d.ok) { toast('Sucursal desvinculada', 'ok'); renderTabSeguridad(); }
+      else toast(d.error || 'Contraseña incorrecta', 'err');
+    } catch(e) { toast('Error de conexión', 'err'); }
+
+  } else {
+    try {
+      const r = await fetch(`${CONFIG.servidor}/admin/dispositivos/${deviceId}/${accion}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
+        body: JSON.stringify({})
+      });
+      const d = await r.json();
+      if (d.ok) { toast(`Dispositivo ${accion}do`, 'ok'); renderTabSeguridad(); }
+      else toast(d.error || 'Error', 'err');
+    } catch(e) { toast('Error de conexión', 'err'); }
   }
-  try {
-    const r = await fetch(`${CONFIG.servidor}/admin/dispositivos/${deviceId}/${accion}`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','x-admin-key':CONFIG.adminKey},
-      body: JSON.stringify({ nombre })
-    });
-    const d = await r.json();
-    if (d.ok) {
-      toast(accion === 'autorizar' ? `Dispositivo autorizado por 120 días` : `Dispositivo ${accion}do`, 'ok');
-      renderTabSeguridad();
-    } else toast(d.error || 'Error', 'err');
-  } catch(e) { toast('Error de conexión', 'err'); }
 }
 
 // ══ MÓDULO DE REPORTES ════════════════════════════════════════════
