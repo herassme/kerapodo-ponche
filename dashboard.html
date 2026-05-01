@@ -699,7 +699,18 @@ const MESES  = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto
 const ORDEN  = {trabajando:0, almuerzo:1, salio:2, ausente:3};
 const BLABEL = {trabajando:'Activo', almuerzo:'Almuerzo', salio:'Salió', ausente:'Ausente'};
 
-let adminKey = '', filtroActivo = 'todos', filtroSucursal = '', todosEmpleados = [];
+let adminKey = sessionStorage.getItem('dash_key') || '';
+let filtroActivo = 'todos', filtroSucursal = '', todosEmpleados = [];
+
+// Si ya hay sesión guardada, entrar directo sin login
+window.addEventListener('load', () => {
+  if (adminKey) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'flex';
+    cargarDatos();
+    setInterval(cargarDatos, 30000);
+  }
+});
 
 // ── Reloj ─────────────────────────────────────────────────────────────────────
 function tick() {
@@ -725,6 +736,7 @@ async function dashLogin() {
     const d = await r.json();
     if (d.ok) {
       adminKey = pass;
+      sessionStorage.setItem('dash_key', pass);
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('dashboard').style.display = 'flex';
       cargarDatos();
