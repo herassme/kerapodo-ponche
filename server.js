@@ -191,6 +191,7 @@ async function sincronizarPinesGitHub() {
 
 async function cargarPinesDesdeGitHub() {
   try {
+    const data = await fetchURL(PINES_URL);
     const json = JSON.parse(data);
     if (Array.isArray(json.empleados)) {
       json.empleados.forEach(e => {
