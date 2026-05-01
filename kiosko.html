@@ -1163,6 +1163,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--gray
     </div>
     <div class="admin-tabs">
       <div class="admin-tab active" onclick="adminTab('reporte')" id="atab-reporte">Reporte</div>
+      <div class="admin-tab" onclick="adminTab('envivo')" id="atab-envivo">🟢 En vivo</div>
       <div class="admin-tab" onclick="adminTab('empleados')" id="atab-empleados">Empleados</div>
       <div class="admin-tab" onclick="adminTab('seguridad')" id="atab-seguridad">🔐 Seguridad</div>
       <div class="admin-tab" onclick="adminTab('config')" id="atab-config">Config</div>
@@ -1770,15 +1771,80 @@ async function adminLogin() {
 }
 
 function adminTab(tab) {
-  ['reporte','empleados','seguridad','config'].forEach(t => {
+  ['reporte','envivo','empleados','seguridad','config'].forEach(t => {
     const el = document.getElementById(`atab-${t}`);
     if (el) el.classList.toggle('active', t === tab);
   });
   document.getElementById('admin-content').innerHTML = '';
   if (tab === 'reporte')        renderTabReporte();
+  else if (tab === 'envivo')    renderTabEnVivo();
   else if (tab === 'empleados') { empleadosAdmin = []; renderTabEmpleados(); }
   else if (tab === 'seguridad') renderTabSeguridad();
   else if (tab === 'config')    renderTabConfig();
+}
+
+let enVivoInterval = null;
+
+async function renderTabEnVivo() {
+  const c = document.getElementById('admin-content');
+  c.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">Cargando...</div>';
+
+  async function cargar() {
+    // Si el tab ya no está activo, detener
+    if (!document.getElementById('atab-envivo')?.classList.contains('active')) {
+      clearInterval(enVivoInterval); enVivoInterval = null; return;
+    }
+    try {
+      const r = await fetch(`${CONFIG.servidor}/admin/en-vivo`, { headers:{'x-admin-key':CONFIG.adminKey} });
+      const d = await r.json();
+      if (!d.ok) { c.innerHTML = `<div style="color:var(--red);font-size:13px">Error: ${d.error}</div>`; return; }
+
+      const BADGE = { trabajando:'🟢 Dentro', almuerzo:'🍽 Almuerzo', salio:'✅ Salió', ausente:'⚠️ Ausente' };
+      const COLOR  = { trabajando:'var(--green)', almuerzo:'var(--amber)', salio:'var(--gray-400)', ausente:'var(--red)' };
+
+      c.innerHTML = `
+        <div class="ac-title">🟢 Estado en vivo <span style="font-size:10px;font-weight:400;color:var(--gray-400)">· Auto-actualiza cada 30s</span></div>
+
+        <!-- KPIs mini -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+          <div class="rp-mini-stat"><div class="rp-mini-val" style="color:var(--green)">${d.resumen.trabajando}</div><div class="rp-mini-lbl">Dentro</div></div>
+          <div class="rp-mini-stat"><div class="rp-mini-val" style="color:var(--amber)">${d.resumen.almuerzo}</div><div class="rp-mini-lbl">Almuerzo</div></div>
+          <div class="rp-mini-stat"><div class="rp-mini-val" style="color:var(--gray-400)">${d.resumen.salio}</div><div class="rp-mini-lbl">Salieron</div></div>
+          <div class="rp-mini-stat"><div class="rp-mini-val" style="color:var(--red)">${d.resumen.ausente}</div><div class="rp-mini-lbl">Ausentes</div></div>
+        </div>
+
+        <!-- Lista empleados -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${d.empleados.map(e => `
+            <div style="background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+              <div style="width:8px;height:8px;border-radius:50%;background:${COLOR[e.estado]||'var(--gray-300)'};flex-shrink:0"></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;font-weight:600;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.nombre}</div>
+                <div style="font-size:10px;color:var(--gray-400)">
+                  ${e.horaEntrada ? `↑ ${e.horaEntrada}` : 'Sin entrada'}
+                  ${e.horaSalida  ? ` · ↓ ${e.horaSalida}` : ''}
+                  ${e.tardanza > 0 ? ` · <span style="color:var(--amber)">+${e.tardanza}m tarde</span>` : ''}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-size:12px;font-weight:600;color:${COLOR[e.estado]}">${e.horas}</div>
+                <div style="font-size:10px;color:var(--gray-400)">${BADGE[e.estado]||e.estado}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+
+        <div style="font-size:10px;color:var(--gray-400);text-align:center;margin-top:12px">
+          Actualizado: ${new Date().toLocaleTimeString('es-DO')} ·
+          <a href="${CONFIG.servidor}/dashboard" target="_blank" style="color:var(--blue);text-decoration:none">Abrir dashboard completo ↗</a>
+        </div>`;
+    } catch(e) {
+      c.innerHTML = `<div style="color:var(--red);font-size:13px">Sin conexión: ${e.message}</div>`;
+    }
+  }
+
+  await cargar();
+  if (enVivoInterval) clearInterval(enVivoInterval);
+  enVivoInterval = setInterval(cargar, 30000);
 }
 
 async function renderTabSeguridad() {
