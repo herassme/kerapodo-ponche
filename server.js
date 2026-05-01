@@ -1019,9 +1019,23 @@ app.delete('/admin/pin/:pin', requireAdmin, async (req,res) => {
 });
 
 app.post('/admin/recargar', requireAdmin, async (req,res) => {
+  const backupPines = {...empleadosPorPIN};
+  const totalActual = Object.keys(backupPines).length;
   empleadosPorPIN = {};
   await cargarPinesDesdeGitHub();
-  res.json({ok:true, cargados:Object.keys(empleadosPorPIN).length});
+  const totalNuevo = Object.keys(empleadosPorPIN).length;
+
+  // Si el archivo de GitHub viene vacío o con menos del 50% de los empleados → revertir
+  if (totalActual > 0 && totalNuevo < Math.floor(totalActual * 0.5)) {
+    empleadosPorPIN = backupPines;
+    console.warn(`[RECARGAR] Recarga rechazada — GitHub tiene ${totalNuevo} PINs vs ${totalActual} en memoria`);
+    return res.status(400).json({
+      ok: false,
+      error: `Recarga rechazada por seguridad: GitHub tiene ${totalNuevo} empleados pero en el sistema hay ${totalActual}. Verifica el archivo pines.json antes de recargar.`
+    });
+  }
+
+  res.json({ok:true, cargados:totalNuevo, anterior:totalActual});
 });
 
 app.post('/admin/carga-masiva', requireAdmin, (req,res) => {
