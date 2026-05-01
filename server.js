@@ -1279,9 +1279,33 @@ app.get('/admin/en-vivo', requireAdmin, async (req,res) => {
         if (minE > minEntrada) tardanza = minE - minEntrada;
       }
 
+      // Calcular almuerzo
+      let minAlmuerzo = 0, almuerzoExcedido = false, almuerzoEnCurso = false;
+      if (regsEmp.length >= 2) {
+        // Almuerzo = tiempo entre fin del primer bloque e inicio del segundo
+        const finBloque1 = regsEmp[0].check_out
+          ? new Date(regsEmp[0].check_out.replace(' ','T')+'Z').getTime() : null;
+        const iniBloque2 = regsEmp[1].check_in
+          ? new Date(regsEmp[1].check_in.replace(' ','T')+'Z').getTime() : null;
+        if (finBloque1 && iniBloque2) {
+          minAlmuerzo = Math.round((iniBloque2 - finBloque1) / 60000);
+          almuerzoExcedido = minAlmuerzo > horario.almuerzo + 5; // 5 min de gracia
+        }
+      } else if (estado === 'almuerzo' && regsEmp[0]?.check_out) {
+        // Está en almuerzo ahora mismo — calcular cuánto lleva
+        const salidaAlm = new Date(regsEmp[0].check_out.replace(' ','T')+'Z').getTime();
+        minAlmuerzo = Math.round((Date.now() - salidaAlm) / 60000);
+        almuerzoEnCurso = true;
+        almuerzoExcedido = minAlmuerzo > horario.almuerzo + 5;
+      }
+
+      const almuerzoFmt = minAlmuerzo > 0
+        ? `${Math.floor(minAlmuerzo/60) > 0 ? Math.floor(minAlmuerzo/60)+'h ' : ''}${minAlmuerzo%60}m`
+        : null;
+
       const horas = `${Math.floor(minutosTotal/60)}h ${minutosTotal%60}m`;
 
-      return { id:emp.id, nombre:emp.nombre, estado, horaEntrada, horaSalida, horas, minutosTotal, tardanza };
+      return { id:emp.id, nombre:emp.nombre, estado, horaEntrada, horaSalida, horas, minutosTotal, tardanza, minAlmuerzo, almuerzoFmt, almuerzoExcedido, almuerzoEnCurso };
     });
 
     // Empleados con PIN que no han llegado
