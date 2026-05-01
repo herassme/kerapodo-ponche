@@ -515,6 +515,16 @@ body::before {
   100% { transform: scale(1); }
 }
 
+/* Parpadeo rojo sutil cuando almuerzo excede tiempo */
+@keyframes almExceso {
+  0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0); border-color: var(--gray-100); }
+  50%     { box-shadow: 0 0 0 4px rgba(192,57,43,.08); border-color: rgba(192,57,43,.3); }
+}
+.ecard.almuerzo.excedido {
+  animation: empIn .35s var(--ease-spring) both, almExceso 2.5s ease-in-out infinite;
+  animation-delay: 0s, .4s;
+}
+
 /* Empty state */
 .empty-state {
   grid-column: 1/-1;
@@ -767,6 +777,7 @@ function filtrar(tipo) {
 const ICO_ENTRY = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
 const ICO_EXIT  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`;
 const ICO_WARN  = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>`;
+const ICO_ALM   = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
 
 function renderEmpleados() {
   const lista = filtroActivo === 'todos'
@@ -790,26 +801,53 @@ function renderEmpleados() {
 
   grid.innerHTML = lista.map((e, i) => {
     const nombreCorto = e.nombre.split(' ').slice(0,2).join(' ');
+    const excedido    = e.almuerzoExcedido ? 'excedido' : '';
+
+    // Tarde badge
     const tarde = e.tardanza > 0
       ? `<div class="etarde">${ICO_WARN} +${e.tardanza}m tarde</div>` : '';
+
+    // Almuerzo info
+    let almuerzoRow = '';
+    if (e.almuerzoFmt) {
+      const excText  = e.almuerzoExcedido
+        ? `<span style="color:var(--red);font-weight:600;font-size:10px"> · +${e.minAlmuerzo - 60}m exceso</span>` : '';
+      const enCurso  = e.almuerzoEnCurso
+        ? `<span style="color:var(--amber);font-size:10px;margin-left:4px">en curso</span>` : '';
+      almuerzoRow = `<div class="etime-item" style="color:${e.almuerzoExcedido?'var(--red)':e.almuerzoEnCurso?'var(--amber)':'var(--gray-400)'}">
+        ${ICO_ALM} ${e.almuerzoFmt}${excText}${enCurso}
+      </div>`;
+    }
+
+    // Tarde label para ausentes
+    const ausLabel = e.estado === 'ausente'
+      ? `<div style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--red);background:var(--red-pale);border:1px solid rgba(192,57,43,.15);border-radius:6px;padding:2px 8px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Tarde
+        </div>` : '';
+
     const sinEntrada = !e.horaEntrada;
 
-    return `<div class="ecard ${e.estado}" style="animation-delay:${Math.min(i*.025,.3)}s">
+    return `<div class="ecard ${e.estado} ${excedido}" style="animation-delay:${Math.min(i*.025,.3)}s">
       <div class="ecard-strip"></div>
       <div class="ecard-inner">
         <div class="etop">
           <div class="ename">${nombreCorto}</div>
           <span class="ebadge">${BLABEL[e.estado]||e.estado}</span>
         </div>
-        <div class="ehoras">${e.horas}</div>
+        ${ausLabel}
+        ${e.estado !== 'ausente' ? `<div class="ehoras">${e.horas}</div>` : ''}
         <div class="ediv"></div>
         <div class="etimes">
-          ${sinEntrada
+          ${sinEntrada && e.estado !== 'ausente'
             ? `<span style="color:var(--red);font-size:11px">Sin entrada</span>`
-            : `<span class="etime-item">${ICO_ENTRY} ${e.horaEntrada}</span>`
+            : e.horaEntrada
+              ? `<span class="etime-item">${ICO_ENTRY} ${e.horaEntrada}</span>`
+              : ''
           }
           ${e.horaSalida ? `<span class="etime-item">${ICO_EXIT} ${e.horaSalida}</span>` : ''}
         </div>
+        ${almuerzoRow}
         ${tarde}
       </div>
     </div>`;
