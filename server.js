@@ -1204,6 +1204,109 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
   }
 });
 
+// ── DASHBOARD EN VIVO ────────────────────────────────────────────────────────
+app.get('/dashboard', (req,res) => res.sendFile(__dirname + '/dashboard.html'));
+
+app.get('/admin/en-vivo', requireAdmin, async (req,res) => {
+  try {
+    if (!odooUID) await odooLogin();
+    const inicioStr = inicioDiaUTC();
+
+    // Traer todos los registros de hoy
+    const xmlHoy = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [[['check_in','>=',inicioStr]]],
+        {fields:['employee_id','check_in','check_out'], order:'employee_id asc,check_in asc', limit:1000}
+      ]
+    );
+    const regs = parseAttendanceXml(xmlHoy);
+
+    // Traer entradas abiertas (para saber quién está dentro ahora)
+    const xmlAbiertos = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [[['check_out','=',false],['check_in','>=',inicioStr]]],
+        {fields:['employee_id','check_in'], order:'check_in asc', limit:200}
+      ]
+    );
+    const abiertos = parseAttendanceXml(xmlAbiertos);
+    const abiertosIds = new Set(abiertos.map(r => Array.isArray(r.employee_id) ? r.employee_id[0] : r.employee_id));
+
+    // Agrupar por empleado
+    const porEmp = {};
+    regs.forEach(r => {
+      if (!r.employee_id) return;
+      const id     = Array.isArray(r.employee_id) ? r.employee_id[0] : r.employee_id;
+      const nombre = Array.isArray(r.employee_id) ? r.employee_id[1] : '?';
+      if (!porEmp[id]) porEmp[id] = { id, nombre, registros:[] };
+      porEmp[id].registros.push(r);
+    });
+
+    const horario = getHorarioHoy();
+    const ahoraRDStr = ahoraRD();
+    const minAhora   = horaAMinutos(ahoraRDStr);
+    const minEntrada = horaAMinutos(horario.entrada);
+
+    // Clasificar cada empleado
+    const empleados = Object.values(porEmp).map(emp => {
+      const regsEmp  = emp.registros;
+      const ultimo   = regsEmp[regsEmp.length - 1];
+      const primero  = regsEmp[0];
+      const dentroAhora = abiertosIds.has(emp.id);
+
+      let estado, horaEntrada = null, horaSalida = null, minutosTotal = 0;
+
+      if (dentroAhora && regsEmp.length === 1) estado = 'trabajando';
+      else if (dentroAhora && regsEmp.length >= 2) estado = 'trabajando'; // regresó almuerzo
+      else if (!dentroAhora && regsEmp.length === 1) estado = 'almuerzo';
+      else if (!dentroAhora && regsEmp.length >= 2) estado = 'salio';
+      else estado = 'trabajando';
+
+      if (primero?.check_in) horaEntrada = horaLocalRD(primero.check_in);
+      if (ultimo?.check_out) horaSalida  = horaLocalRD(ultimo.check_out);
+
+      // Calcular minutos trabajados hasta ahora
+      regsEmp.forEach(r => {
+        if (!r.check_in) return;
+        const ini = new Date(r.check_in.replace(' ','T')+'Z').getTime();
+        const fin = r.check_out ? new Date(r.check_out.replace(' ','T')+'Z').getTime() : Date.now();
+        minutosTotal += Math.round((fin - ini) / 60000);
+      });
+
+      // Tardanza
+      let tardanza = 0;
+      if (horaEntrada) {
+        const minE = horaAMinutos(horaEntrada);
+        if (minE > minEntrada) tardanza = minE - minEntrada;
+      }
+
+      const horas = `${Math.floor(minutosTotal/60)}h ${minutosTotal%60}m`;
+
+      return { id:emp.id, nombre:emp.nombre, estado, horaEntrada, horaSalida, horas, minutosTotal, tardanza };
+    });
+
+    // Empleados con PIN que no han llegado
+    const idsTrabajando = new Set(Object.keys(porEmp).map(Number));
+    const noLlegaron = Object.values(empleadosPorPIN)
+      .filter(e => !idsTrabajando.has(e.odoo_id) && minAhora > minEntrada)
+      .map(e => ({ id:e.odoo_id, nombre:e.nombre, estado:'ausente', horaEntrada:null, horaSalida:null, horas:'0h', minutosTotal:0, tardanza:0 }));
+
+    const todos = [...empleados, ...noLlegaron].sort((a,b) => a.nombre.localeCompare(b.nombre));
+
+    const resumen = {
+      trabajando: todos.filter(e=>e.estado==='trabajando').length,
+      almuerzo:   todos.filter(e=>e.estado==='almuerzo').length,
+      salio:      todos.filter(e=>e.estado==='salio').length,
+      ausente:    todos.filter(e=>e.estado==='ausente').length,
+      total:      todos.length
+    };
+
+    res.json({ ok:true, hora: ahoraRDStr, horario, resumen, empleados:todos });
+  } catch(e) {
+    console.error('[EN-VIVO]', e.message);
+    res.status(500).json({error:e.message});
+  }
+});
+
 // ── RUTAS ADMIN BÁSICAS ───────────────────────────────────────────────────────
 app.get('/admin/empleados', requireAdmin, (req,res) => {
   res.json({total:Object.keys(empleadosPorPIN).length, empleados:Object.entries(empleadosPorPIN).map(([pin,e])=>({pin,odoo_id:e.odoo_id,nombre:e.nombre}))});
