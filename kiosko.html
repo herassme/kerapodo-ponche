@@ -1477,6 +1477,10 @@ async function capturarRostroMain() {
     const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true).withFaceDescriptor();
     if (!det) { err.textContent = 'No se detectó rostro. Intenta de nuevo.'; btn.disabled = false; return; }
     const guardado = await guardarDescriptorServidor(regPinMain, det.descriptor, regNombreMain);
+    // Si era un reregistro, borrar el descriptor anterior AHORA que tenemos uno nuevo
+    if (window._regPinPendiente) {
+      delete descriptoresFaciales[window._regPinPendiente];
+    }
     descriptoresFaciales[regPinMain] = det.descriptor;
     err.textContent = guardado ? 'Rostro registrado exitosamente' : 'Guardado localmente';
     if (regStreamMain) { regStreamMain.getTracks().forEach(t => t.stop()); regStreamMain = null; }
@@ -2241,8 +2245,7 @@ async function sincronizarOdoo() {
 }
 
 async function reregistrarRostroAdmin(pin, nombre) {
-  delete descriptoresFaciales[pin];
-  try { await fetch(`${CONFIG.servidor}/admin/facial/${pin}`, { method:'DELETE', headers:{'x-admin-key':CONFIG.adminKey} }); } catch(e) {}
+  // NO borramos el descriptor aquí — lo borramos solo si la nueva captura es exitosa
   const regOv = document.getElementById('screen-registro');
   regOv.style.zIndex = '500';
   document.getElementById('reg-emp-nombre-main').textContent = nombre;
@@ -2252,7 +2255,16 @@ async function reregistrarRostroAdmin(pin, nombre) {
   document.getElementById('reg-capture-err').textContent = '';
   regOv.classList.add('show');
   regPinMain = pin; regNombreMain = nombre;
-  window._regResolve = (ok) => { regOv.style.zIndex = '300'; regOv.classList.remove('show'); if (ok) toast('Rostro actualizado correctamente', 'ok'); renderTabEmpleados(); };
+  // Guardamos el pin para borrarlo solo si la captura es exitosa
+  window._regPinPendiente = pin;
+  window._regResolve = (ok) => {
+    regOv.style.zIndex = '300';
+    regOv.classList.remove('show');
+    if (ok) toast('Rostro actualizado correctamente', 'ok');
+    else toast('Reregistro cancelado — rostro anterior conservado', 'ok');
+    window._regPinPendiente = null;
+    renderTabEmpleados();
+  };
   try {
     const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
     regStreamMain = stream;
