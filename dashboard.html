@@ -3,265 +3,817 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Kerapodo — Dashboard en Vivo</title>
+<title>Kerapodo — Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --blue:       #1a4f8a;
-  --blue-dark:  #133d6e;
-  --blue-light: #2563aa;
-  --blue-pale:  #e8f0fb;
-  --white:      #ffffff;
-  --gray-50:    #f8f9fb;
-  --gray-100:   #eef0f4;
-  --gray-200:   #dde1ea;
-  --gray-400:   #9aa3b5;
-  --gray-600:   #5a6478;
-  --gray-900:   #111827;
-  --green:      #0d7a55;
-  --green-pale: #e6f5ef;
-  --amber:      #b45309;
-  --amber-pale: #fef3e2;
-  --red:        #c0392b;
-  --red-pale:   #fdecea;
-  --shadow-sm:  0 1px 3px rgba(17,24,39,.06);
-  --shadow-md:  0 4px 12px rgba(17,24,39,.08), 0 2px 4px rgba(17,24,39,.04);
-  --shadow-xl:  0 24px 64px rgba(17,24,39,.16), 0 8px 24px rgba(17,24,39,.08);
-  --radius:     12px;
-  --radius-lg:  20px;
-  --radius-xl:  28px;
+  --blue:        #1a4f8a;
+  --blue-dark:   #133d6e;
+  --blue-light:  #2563aa;
+  --blue-pale:   #e8f0fb;
+  --white:       #ffffff;
+  --gray-50:     #f8f9fb;
+  --gray-100:    #eef0f4;
+  --gray-200:    #dde1ea;
+  --gray-300:    #c8ceda;
+  --gray-400:    #9aa3b5;
+  --gray-600:    #5a6478;
+  --gray-900:    #111827;
+  --green:       #0d7a55;
+  --green-mid:   #158f64;
+  --green-pale:  #e6f5ef;
+  --amber:       #b45309;
+  --amber-pale:  #fef3e2;
+  --red:         #c0392b;
+  --red-pale:    #fdecea;
+  --sky:         #0369a1;
+  --sky-pale:    #e0f2fe;
+
+  --shadow-xs: 0 1px 2px rgba(17,24,39,.04);
+  --shadow-sm: 0 1px 3px rgba(17,24,39,.06), 0 1px 2px rgba(17,24,39,.04);
+  --shadow-md: 0 4px 12px rgba(17,24,39,.08), 0 2px 4px rgba(17,24,39,.04);
+  --shadow-lg: 0 16px 40px rgba(17,24,39,.10), 0 4px 12px rgba(17,24,39,.06);
+  --shadow-xl: 0 24px 64px rgba(17,24,39,.14), 0 8px 24px rgba(17,24,39,.08);
+
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
+
   --font-display: 'DM Serif Display', Georgia, serif;
   --font-body:    'DM Sans', system-ui, sans-serif;
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:     cubic-bezier(0, 0, 0.2, 1);
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;background:var(--gray-50);font-family:var(--font-body);color:var(--gray-900);overflow:hidden}
-body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(26,79,138,.06) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 100% 100%,rgba(26,79,138,.04) 0%,transparent 60%);pointer-events:none}
 
-/* ── LOGIN ── */
-#login-screen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--gray-50)}
-#login-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(26,79,138,.06) 0%,transparent 70%);pointer-events:none}
-.login-card{position:relative;z-index:1;background:var(--white);border-radius:var(--radius-xl);box-shadow:var(--shadow-xl);width:100%;max-width:380px;overflow:hidden;animation:cardIn .6s var(--ease-spring) both;border:1px solid var(--gray-100)}
-@keyframes cardIn{from{transform:translateY(24px) scale(.97);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
-.login-head{background:var(--blue);padding:28px;position:relative;overflow:hidden}
-.login-head::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 120% 80% at 110% -20%,rgba(255,255,255,.1) 0%,transparent 55%);pointer-events:none}
-.login-logo{display:flex;align-items:center;gap:8px;position:relative;z-index:1}
-.login-logo-text{font-family:var(--font-display);font-style:italic;font-size:28px;font-weight:700;color:var(--white);letter-spacing:-.01em;line-height:1}
-.login-tag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:4px;position:relative;z-index:1}
-.login-body{padding:28px;display:flex;flex-direction:column;gap:14px}
-.login-input{width:100%;background:var(--gray-50);border:1.5px solid var(--gray-200);color:var(--gray-900);padding:13px 16px;border-radius:var(--radius);outline:none;font-family:var(--font-body);font-size:15px;text-align:center;letter-spacing:.1em;transition:border-color .2s}
-.login-input:focus{border-color:var(--blue);background:var(--white)}
-.login-btn{width:100%;background:var(--blue);color:var(--white);border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:14px;font-weight:600;padding:14px;cursor:pointer;box-shadow:0 2px 8px rgba(26,79,138,.35);transition:all .15s}
-.login-btn:hover{background:var(--blue-light)}
-.login-btn:active{transform:scale(.98)}
-.login-err{font-size:12px;color:var(--red);min-height:16px;font-weight:500;text-align:center}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── DASHBOARD ── */
-#dashboard{display:none;position:relative;z-index:1;height:100vh;flex-direction:column}
-.dash-head{background:var(--blue);padding:16px 24px;position:relative;overflow:hidden;flex-shrink:0}
-.dash-head::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 120% 80% at 110% -20%,rgba(255,255,255,.1) 0%,transparent 55%);pointer-events:none}
-.dash-head-row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between}
-.dash-logo{display:flex;align-items:center;gap:10px}
-.dash-logo-text{font-family:var(--font-display);font-style:italic;font-size:22px;font-weight:700;color:var(--white);letter-spacing:-.01em}
-.dash-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:dp 2s infinite}
-@keyframes dp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
-.dash-clock{font-family:var(--font-display);font-size:34px;color:var(--white);letter-spacing:-.02em;line-height:1;text-align:right}
-.dash-date{font-size:10px;color:rgba(255,255,255,.5);text-align:right;margin-top:2px}
-.dash-upd{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;letter-spacing:.04em}
-.dash-filters{display:flex;gap:6px;margin-top:12px;position:relative;z-index:1;flex-wrap:wrap}
-.fbtn{font-size:11px;font-weight:500;padding:5px 14px;border-radius:100px;border:1.5px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.6);cursor:pointer;transition:all .15s;font-family:var(--font-body)}
-.fbtn:hover{background:rgba(255,255,255,.1);color:var(--white)}
-.fbtn.active{background:var(--white);color:var(--blue);border-color:var(--white);font-weight:600}
+html, body {
+  width: 100%; height: 100%;
+  background: var(--gray-50);
+  font-family: var(--font-body);
+  color: var(--gray-900);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% -5%, rgba(26,79,138,.07) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 50% at 100% 100%, rgba(26,79,138,.04) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 30% at 0% 80%, rgba(13,122,85,.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════════════ */
+#login-screen {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  position: relative; z-index: 1;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%; max-width: 380px;
+  overflow: hidden;
+  border: 1px solid var(--gray-100);
+  animation: riseIn .7s var(--ease-spring) both;
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(32px) scale(.95); }
+  to   { opacity: 1; transform: translateY(0)     scale(1); }
+}
+
+/* Login header */
+.lh {
+  background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 60%, var(--blue-light) 100%);
+  padding: 32px 28px 28px;
+  position: relative; overflow: hidden;
+}
+
+.lh::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 140% 90% at 115% -15%, rgba(255,255,255,.12) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 70% at -15% 115%, rgba(255,255,255,.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Grid pattern sutil */
+.lh::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+.lh-logo {
+  display: flex; align-items: center; gap: 10px;
+  position: relative; z-index: 1;
+}
+
+.lh-logo-text {
+  font-family: var(--font-display);
+  font-style: italic; font-size: 30px; font-weight: 700;
+  color: var(--white); letter-spacing: -.015em; line-height: 1;
+}
+
+.lh-tag {
+  font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+  color: rgba(255,255,255,.4); margin-top: 6px;
+  position: relative; z-index: 1; font-weight: 400;
+}
+
+/* Login body */
+.lb {
+  padding: 28px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.lb-field {
+  position: relative;
+}
+
+.lb-input {
+  width: 100%;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-200);
+  color: var(--gray-900);
+  padding: 13px 16px 13px 44px;
+  border-radius: var(--radius);
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: .06em;
+  transition: border-color .2s var(--ease-smooth), background .2s var(--ease-smooth), box-shadow .2s;
+}
+
+.lb-input:focus {
+  border-color: var(--blue);
+  background: var(--white);
+  box-shadow: 0 0 0 3px rgba(26,79,138,.08);
+}
+
+.lb-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--gray-400); pointer-events: none;
+  transition: color .2s;
+}
+.lb-field:focus-within .lb-icon { color: var(--blue); }
+
+.lb-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-light) 100%);
+  color: var(--white);
+  border: none; border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  padding: 14px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(26,79,138,.3), 0 1px 3px rgba(26,79,138,.2);
+  transition: transform .15s var(--ease-smooth), box-shadow .15s var(--ease-smooth), filter .15s;
+  letter-spacing: .02em;
+}
+.lb-btn:hover  { filter: brightness(1.08); box-shadow: 0 6px 20px rgba(26,79,138,.35); }
+.lb-btn:active { transform: scale(.98); box-shadow: 0 2px 8px rgba(26,79,138,.25); }
+
+.lb-err {
+  font-size: 12px; color: var(--red);
+  min-height: 14px; font-weight: 500; text-align: center;
+  transition: opacity .2s;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════════ */
+#dashboard {
+  display: none;
+  position: relative; z-index: 1;
+  height: 100vh;
+  flex-direction: column;
+}
+
+/* Header */
+.dh {
+  background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 60%, var(--blue-light) 100%);
+  padding: 16px 24px 0;
+  position: relative; overflow: hidden;
+  flex-shrink: 0;
+}
+
+.dh::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 140% 90% at 115% -15%, rgba(255,255,255,.10) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 70% at -15% 115%, rgba(255,255,255,.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+.dh::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+.dh-top {
+  position: relative; z-index: 1;
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+
+.dh-logo {
+  display: flex; align-items: center; gap: 10px;
+}
+
+.dh-logo-text {
+  font-family: var(--font-display);
+  font-style: italic; font-size: 20px; font-weight: 700;
+  color: var(--white); letter-spacing: -.01em; line-height: 1;
+}
+
+/* Live indicator */
+.live-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 100px; padding: 4px 10px 4px 7px;
+  backdrop-filter: blur(4px);
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 2px rgba(74,222,128,.3);
+  animation: livep 2.5s infinite;
+}
+@keyframes livep {
+  0%,100%{ box-shadow: 0 0 0 2px rgba(74,222,128,.3); }
+  50%    { box-shadow: 0 0 0 5px rgba(74,222,128,.1); }
+}
+.live-text {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.8);
+}
+
+/* Clock */
+.dh-clock {
+  text-align: right;
+}
+.dh-time {
+  font-family: var(--font-display);
+  font-size: 32px; color: var(--white);
+  letter-spacing: -.02em; line-height: 1;
+}
+.dh-date   { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 2px; }
+.dh-update { font-size: 10px; color: rgba(255,255,255,.3); margin-top: 2px; letter-spacing: .03em; }
+
+/* Filters */
+.dh-filters {
+  display: flex; gap: 4px;
+  margin-top: 14px; padding-bottom: 1px;
+  position: relative; z-index: 1;
+  overflow-x: auto;
+}
+.dh-filters::-webkit-scrollbar { display: none; }
+
+.ftab {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500;
+  padding: 8px 16px;
+  background: transparent;
+  color: rgba(255,255,255,.5);
+  border: none; border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color .2s var(--ease-smooth), border-color .2s var(--ease-smooth);
+  white-space: nowrap;
+  font-family: var(--font-body);
+  letter-spacing: .01em;
+}
+.ftab svg { flex-shrink: 0; transition: opacity .2s; }
+.ftab:hover { color: rgba(255,255,255,.8); }
+.ftab.active {
+  color: var(--white);
+  border-bottom-color: rgba(255,255,255,.7);
+  font-weight: 600;
+}
+.ftab .ftab-count {
+  background: rgba(255,255,255,.15);
+  border-radius: 100px; padding: 1px 7px;
+  font-size: 10px; font-weight: 700;
+  min-width: 20px; text-align: center;
+  transition: background .2s;
+}
+.ftab.active .ftab-count { background: rgba(255,255,255,.25); }
 
 /* KPIs */
-.dash-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px 0;flex-shrink:0}
-.kpi{background:var(--white);border:1px solid var(--gray-100);border-radius:var(--radius-lg);padding:14px 18px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:2px}
-.kpi-v{font-family:var(--font-display);font-size:30px;font-weight:400;line-height:1}
-.kpi-l{font-size:10px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
-.kpi.verde{border-top:3px solid var(--green)}.kpi.verde .kpi-v{color:var(--green)}
-.kpi.amber{border-top:3px solid var(--amber)}.kpi.amber .kpi-v{color:var(--amber)}
-.kpi.gris {border-top:3px solid var(--gray-400)}.kpi.gris  .kpi-v{color:var(--gray-600)}
-.kpi.rojo {border-top:3px solid var(--red)}.kpi.rojo  .kpi-v{color:var(--red)}
+.dash-kpis {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 12px; padding: 14px 20px 0; flex-shrink: 0;
+}
 
-/* Grid */
-.dash-body{flex:1;overflow-y:auto;padding:12px 20px 16px}
-.dash-body::-webkit-scrollbar{width:4px}
-.dash-body::-webkit-scrollbar-thumb{background:var(--gray-200);border-radius:2px}
-.dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px}
+.kpi {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 14px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-100);
+  position: relative; overflow: hidden;
+  transition: transform .2s var(--ease-smooth), box-shadow .2s var(--ease-smooth);
+  cursor: default;
+}
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
-.ecard{background:var(--white);border:1.5px solid var(--gray-100);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:5px;animation:eIn .3s var(--ease-spring) both;transition:opacity .3s}
-@keyframes eIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.ecard.trabajando{border-left:3px solid var(--green)}
-.ecard.almuerzo  {border-left:3px solid var(--amber)}
-.ecard.salio     {border-left:3px solid var(--gray-200);opacity:.7}
-.ecard.ausente   {border-left:3px solid var(--red);opacity:.6}
+/* Accent bar top */
+.kpi::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.kpi.verde::before { background: linear-gradient(90deg, var(--green), var(--green-mid)); }
+.kpi.amber::before { background: linear-gradient(90deg, var(--amber), #d97706); }
+.kpi.gris::before  { background: linear-gradient(90deg, var(--gray-300), var(--gray-400)); }
+.kpi.rojo::before  { background: linear-gradient(90deg, var(--red), #e74c3c); }
 
-.etop{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
-.ename{font-size:13px;font-weight:600;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
-.ebadge{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 8px;border-radius:100px;flex-shrink:0}
-.ebadge.trabajando{background:var(--green-pale);color:var(--green)}
-.ebadge.almuerzo  {background:var(--amber-pale);color:var(--amber)}
-.ebadge.salio     {background:var(--gray-100);color:var(--gray-600)}
-.ebadge.ausente   {background:var(--red-pale);color:var(--red)}
+/* Decorative circle */
+.kpi::after {
+  content: '';
+  position: absolute; right: -20px; bottom: -20px;
+  width: 80px; height: 80px; border-radius: 50%;
+  opacity: .06;
+}
+.kpi.verde::after { background: var(--green); }
+.kpi.amber::after { background: var(--amber); }
+.kpi.gris::after  { background: var(--gray-400); }
+.kpi.rojo::after  { background: var(--red); }
 
-.ehoras{font-family:var(--font-display);font-size:20px;color:var(--gray-900);line-height:1}
-.ecard.trabajando .ehoras{color:var(--green)}
-.ecard.almuerzo   .ehoras{color:var(--amber)}
-.etimes{display:flex;gap:8px;font-size:11px;color:var(--gray-400)}
-.etarde{display:inline-block;font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-pale);border-radius:4px;padding:1px 6px}
+.kpi-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
 
-.dash-foot{padding:8px 20px;text-align:center;font-size:10px;color:var(--gray-400);letter-spacing:.06em;border-top:1px solid var(--gray-100);flex-shrink:0;background:var(--white)}
+.kpi-icon {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi.verde .kpi-icon { background: var(--green-pale); color: var(--green); }
+.kpi.amber .kpi-icon { background: var(--amber-pale); color: var(--amber); }
+.kpi.gris  .kpi-icon { background: var(--gray-100);   color: var(--gray-600); }
+.kpi.rojo  .kpi-icon { background: var(--red-pale);   color: var(--red); }
+
+.kpi-val {
+  font-family: var(--font-display);
+  font-size: 34px; font-weight: 400; line-height: 1;
+  transition: all .4s var(--ease-spring);
+}
+.kpi.verde .kpi-val { color: var(--green); }
+.kpi.amber .kpi-val { color: var(--amber); }
+.kpi.gris  .kpi-val { color: var(--gray-600); }
+.kpi.rojo  .kpi-val { color: var(--red); }
+
+.kpi-lbl {
+  font-size: 11px; color: var(--gray-400);
+  text-transform: uppercase; letter-spacing: .08em; font-weight: 500;
+}
+
+/* Grid empleados */
+.dash-body {
+  flex: 1; overflow-y: auto; padding: 12px 20px 16px;
+}
+.dash-body::-webkit-scrollbar { width: 5px; }
+.dash-body::-webkit-scrollbar-track { background: transparent; }
+.dash-body::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px,1fr));
+  gap: 10px;
+}
+
+/* Emp card */
+.ecard {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius);
+  padding: 0;
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  animation: empIn .35s var(--ease-spring) both;
+  transition: transform .2s var(--ease-smooth), box-shadow .2s var(--ease-smooth), opacity .3s;
+}
+.ecard:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+@keyframes empIn {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.ecard.salio  { opacity: .65; }
+.ecard.ausente { opacity: .55; }
+
+/* Color strip left */
+.ecard-strip {
+  height: 100%; width: 4px;
+  position: absolute; left: 0; top: 0; bottom: 0;
+  border-radius: 2px 0 0 2px;
+}
+.ecard-inner {
+  position: relative; display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 14px 14px 18px;
+}
+
+.ecard.trabajando .ecard-strip { background: linear-gradient(180deg, var(--green), var(--green-mid)); }
+.ecard.almuerzo   .ecard-strip { background: linear-gradient(180deg, var(--amber), #d97706); }
+.ecard.salio      .ecard-strip { background: var(--gray-200); }
+.ecard.ausente    .ecard-strip { background: linear-gradient(180deg, var(--red), #e74c3c); }
+
+.etop {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 8px;
+}
+
+.ename {
+  font-size: 13px; font-weight: 600;
+  color: var(--gray-900);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; line-height: 1.3;
+}
+
+.ebadge {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 100px; flex-shrink: 0;
+  border: 1px solid transparent;
+}
+.ecard.trabajando .ebadge { background: var(--green-pale); color: var(--green); border-color: rgba(13,122,85,.15); }
+.ecard.almuerzo   .ebadge { background: var(--amber-pale); color: var(--amber); border-color: rgba(180,83,9,.15); }
+.ecard.salio      .ebadge { background: var(--gray-100);   color: var(--gray-600); border-color: var(--gray-200); }
+.ecard.ausente    .ebadge { background: var(--red-pale);   color: var(--red); border-color: rgba(192,57,43,.15); }
+
+.ehoras {
+  font-family: var(--font-display);
+  font-size: 22px; line-height: 1;
+  transition: color .3s;
+}
+.ecard.trabajando .ehoras { color: var(--green); }
+.ecard.almuerzo   .ehoras { color: var(--amber); }
+.ecard.salio      .ehoras { color: var(--gray-600); }
+.ecard.ausente    .ehoras { color: var(--red); }
+
+.etimes {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; color: var(--gray-400);
+}
+
+.etime-item {
+  display: flex; align-items: center; gap: 4px;
+}
+.etime-item svg { flex-shrink: 0; }
+
+.etarde {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600;
+  color: var(--amber); background: var(--amber-pale);
+  border: 1px solid rgba(180,83,9,.12);
+  border-radius: 6px; padding: 2px 7px;
+}
+
+/* Divider */
+.ediv {
+  height: 1px; background: var(--gray-100);
+  margin: 0 -0px;
+}
+
+/* Footer */
+.dash-foot {
+  padding: 9px 24px; text-align: center;
+  font-size: 10px; color: var(--gray-400);
+  letter-spacing: .07em; text-transform: uppercase;
+  border-top: 1px solid var(--gray-100); flex-shrink: 0;
+  background: var(--white);
+}
+
+/* Transitions for number updates */
+.kpi-val.updated {
+  animation: numPop .4s var(--ease-spring);
+}
+@keyframes numPop {
+  0%   { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* Empty state */
+.empty-state {
+  grid-column: 1/-1;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px; gap: 12px; color: var(--gray-400);
+}
+.empty-state svg { opacity: .3; }
+.empty-state p { font-size: 13px; }
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ═══ LOGIN ═══ -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-head">
-      <div class="login-logo">
-        <div class="login-logo-text">KERAPODO</div>
-        <svg viewBox="0 0 32 42" fill="none" style="height:26px;width:auto">
-          <ellipse cx="16" cy="30" rx="10" ry="12" stroke="rgba(255,255,255,0.6)" stroke-width="1.8" fill="none"/>
-          <ellipse cx="6"  cy="12" rx="3"  ry="4"  stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
-          <ellipse cx="13" cy="7"  rx="3"  ry="3.8" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
-          <ellipse cx="21" cy="6"  rx="2.8" ry="3.5" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
-          <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
+    <div class="lh">
+      <div class="lh-logo">
+        <div class="lh-logo-text">KERAPODO</div>
+        <svg viewBox="0 0 32 42" fill="none" style="height:28px;width:auto">
+          <ellipse cx="16" cy="30" rx="10" ry="12" stroke="rgba(255,255,255,0.55)" stroke-width="1.8" fill="none"/>
+          <ellipse cx="6"  cy="12" rx="3"  ry="4"  stroke="rgba(255,255,255,0.55)" stroke-width="1.5" fill="none"/>
+          <ellipse cx="13" cy="7"  rx="3"  ry="3.8" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" fill="none"/>
+          <ellipse cx="21" cy="6"  rx="2.8" ry="3.5" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" fill="none"/>
+          <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" fill="none"/>
         </svg>
       </div>
-      <div class="login-tag">Dashboard · Control de Asistencia en Vivo</div>
+      <div class="lh-tag">Control de Asistencia · Panel en Vivo</div>
     </div>
-    <div class="login-body">
-      <input type="password" class="login-input" id="dash-pass" placeholder="Contraseña admin" onkeydown="if(event.key==='Enter')dashLogin()"/>
-      <button class="login-btn" onclick="dashLogin()">Acceder al Dashboard</button>
-      <div class="login-err" id="dash-err"></div>
+    <div class="lb">
+      <div class="lb-field">
+        <svg class="lb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <input type="password" class="lb-input" id="dash-pass" placeholder="Contraseña de acceso" onkeydown="if(event.key==='Enter')dashLogin()"/>
+      </div>
+      <button class="lb-btn" onclick="dashLogin()">Acceder al panel</button>
+      <div class="lb-err" id="dash-err"></div>
     </div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
+<!-- ═══ DASHBOARD ═══ -->
 <div id="dashboard">
-  <div class="dash-head">
-    <div class="dash-head-row">
+
+  <!-- Header -->
+  <div class="dh">
+    <div class="dh-top">
       <div>
-        <div class="dash-logo">
-          <div class="dash-dot"></div>
-          <div class="dash-logo-text">KERAPODO · EN VIVO</div>
+        <div class="dh-logo">
+          <div class="live-pill">
+            <div class="live-dot"></div>
+            <span class="live-text">En vivo</span>
+          </div>
+          <div class="dh-logo-text">KERAPODO</div>
           <svg viewBox="0 0 32 42" fill="none" style="height:20px;width:auto">
-            <ellipse cx="16" cy="30" rx="10" ry="12" stroke="rgba(255,255,255,0.5)" stroke-width="1.8" fill="none"/>
-            <ellipse cx="6"  cy="12" rx="3"  ry="4"  stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
-            <ellipse cx="13" cy="7"  rx="3"  ry="3.8" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
-            <ellipse cx="21" cy="6"  rx="2.8" ry="3.5" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
-            <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+            <ellipse cx="16" cy="30" rx="10" ry="12" stroke="rgba(255,255,255,0.45)" stroke-width="1.8" fill="none"/>
+            <ellipse cx="6"  cy="12" rx="3"  ry="4"  stroke="rgba(255,255,255,0.45)" stroke-width="1.5" fill="none"/>
+            <ellipse cx="13" cy="7"  rx="3"  ry="3.8" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" fill="none"/>
+            <ellipse cx="21" cy="6"  rx="2.8" ry="3.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" fill="none"/>
+            <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" fill="none"/>
           </svg>
         </div>
-        <div class="dash-upd" id="dash-upd">Conectando...</div>
+        <div class="dh-update" id="dh-upd" style="font-size:10px;color:rgba(255,255,255,.3);margin-top:6px;letter-spacing:.04em">Conectando...</div>
       </div>
-      <div>
-        <div class="dash-clock" id="dash-clock">--:--</div>
-        <div class="dash-date" id="dash-date">---</div>
+      <div class="dh-clock">
+        <div class="dh-time" id="dh-time">--:--</div>
+        <div class="dh-date" id="dh-date">---</div>
       </div>
     </div>
-    <div class="dash-filters">
-      <button class="fbtn active" onclick="filtrar('todos')"      id="f-todos">Todos</button>
-      <button class="fbtn"        onclick="filtrar('trabajando')" id="f-trabajando">🟢 Dentro</button>
-      <button class="fbtn"        onclick="filtrar('almuerzo')"   id="f-almuerzo">🍽 Almuerzo</button>
-      <button class="fbtn"        onclick="filtrar('salio')"      id="f-salio">✅ Salieron</button>
-      <button class="fbtn"        onclick="filtrar('ausente')"    id="f-ausente">⚠️ Ausentes</button>
+
+    <!-- Filter tabs -->
+    <div class="dh-filters">
+      <button class="ftab active" onclick="filtrar('todos')" id="f-todos">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Todos
+        <span class="ftab-count" id="fc-todos">—</span>
+      </button>
+      <button class="ftab" onclick="filtrar('trabajando')" id="f-trabajando">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Dentro
+        <span class="ftab-count" id="fc-trabajando">—</span>
+      </button>
+      <button class="ftab" onclick="filtrar('almuerzo')" id="f-almuerzo">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        Almuerzo
+        <span class="ftab-count" id="fc-almuerzo">—</span>
+      </button>
+      <button class="ftab" onclick="filtrar('salio')" id="f-salio">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Salieron
+        <span class="ftab-count" id="fc-salio">—</span>
+      </button>
+      <button class="ftab" onclick="filtrar('ausente')" id="f-ausente">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Sin registro
+        <span class="ftab-count" id="fc-ausente">—</span>
+      </button>
     </div>
   </div>
 
+  <!-- KPIs -->
   <div class="dash-kpis">
-    <div class="kpi verde"><div class="kpi-v" id="k-t">—</div><div class="kpi-l">🟢 Dentro ahora</div></div>
-    <div class="kpi amber"><div class="kpi-v" id="k-a">—</div><div class="kpi-l">🍽 En almuerzo</div></div>
-    <div class="kpi gris" ><div class="kpi-v" id="k-s">—</div><div class="kpi-l">✅ Salieron</div></div>
-    <div class="kpi rojo" ><div class="kpi-v" id="k-au">—</div><div class="kpi-l">⚠️ Sin registro</div></div>
+    <div class="kpi verde">
+      <div class="kpi-top">
+        <div class="kpi-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-t">—</div>
+      <div class="kpi-lbl">Dentro ahora</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-top">
+        <div class="kpi-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-a">—</div>
+      <div class="kpi-lbl">En almuerzo</div>
+    </div>
+    <div class="kpi gris">
+      <div class="kpi-top">
+        <div class="kpi-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-s">—</div>
+      <div class="kpi-lbl">Salieron</div>
+    </div>
+    <div class="kpi rojo">
+      <div class="kpi-top">
+        <div class="kpi-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><line x1="18" y1="4" x2="22" y2="8"/><line x1="22" y1="4" x2="18" y2="8"/></svg>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-au">—</div>
+      <div class="kpi-lbl">Sin registro</div>
+    </div>
   </div>
 
+  <!-- Employees -->
   <div class="dash-body">
     <div class="dash-grid" id="dash-grid">
-      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray-400);font-size:13px">Cargando datos...</div>
+      <div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <p>Cargando datos...</p>
+      </div>
     </div>
   </div>
 
-  <div class="dash-foot">KERAPODO GROUP SRL · Sistema de Control de Asistencia · Actualización automática cada 30 segundos</div>
+  <div class="dash-foot">Kerapodo Group SRL &nbsp;·&nbsp; Control de Asistencia &nbsp;·&nbsp; Actualización cada 30 s</div>
 </div>
 
 <script>
 const SERVIDOR = window.location.origin;
-const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-let adminKey='', filtroActivo='todos', todosEmpleados=[];
-const ORDEN = {trabajando:0,almuerzo:1,salio:2,ausente:3};
-const BADGE  = {trabajando:'Dentro',almuerzo:'Almuerzo',salio:'Salió',ausente:'Ausente'};
+const DIAS   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES  = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const ORDEN  = {trabajando:0, almuerzo:1, salio:2, ausente:3};
+const BLABEL = {trabajando:'Activo', almuerzo:'Almuerzo', salio:'Salió', ausente:'Ausente'};
 
-function tick(){
-  const n=new Date();
-  document.getElementById('dash-clock').textContent=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
-  document.getElementById('dash-date').textContent=`${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`;
+let adminKey = '', filtroActivo = 'todos', todosEmpleados = [];
+
+// ── Reloj ─────────────────────────────────────────────────────────────────────
+function tick() {
+  const n = new Date();
+  document.getElementById('dh-time').textContent =
+    `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('dh-date').textContent =
+    `${DIAS[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`;
 }
-setInterval(tick,1000);tick();
+setInterval(tick, 1000); tick();
 
-async function dashLogin(){
-  const pass=document.getElementById('dash-pass').value.trim();
-  const err=document.getElementById('dash-err');
-  if(!pass){err.textContent='Ingresa la contraseña';return;}
-  err.textContent='Verificando...';
-  try{
-    const r=await fetch(`${SERVIDOR}/admin/verificar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:pass})});
-    const d=await r.json();
-    if(d.ok){
-      adminKey=pass;
-      document.getElementById('login-screen').style.display='none';
-      document.getElementById('dashboard').style.display='flex';
+// ── Login ─────────────────────────────────────────────────────────────────────
+async function dashLogin() {
+  const pass = document.getElementById('dash-pass').value.trim();
+  const err  = document.getElementById('dash-err');
+  if (!pass) { err.textContent = 'Ingresa la contraseña'; return; }
+  err.textContent = 'Verificando...';
+  try {
+    const r = await fetch(`${SERVIDOR}/admin/verificar`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({key: pass})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      adminKey = pass;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'flex';
       cargarDatos();
-      setInterval(cargarDatos,30000);
-    }else{err.textContent='Contraseña incorrecta';document.getElementById('dash-pass').value='';}
-  }catch(e){err.textContent='Sin conexión al servidor';}
+      setInterval(cargarDatos, 30000);
+    } else {
+      err.textContent = 'Contraseña incorrecta';
+      document.getElementById('dash-pass').value = '';
+    }
+  } catch(e) { err.textContent = 'Sin conexión al servidor'; }
 }
 
-async function cargarDatos(){
-  try{
-    const r=await fetch(`${SERVIDOR}/admin/en-vivo`,{headers:{'x-admin-key':adminKey}});
-    const d=await r.json();
-    if(!d.ok)return;
-    todosEmpleados=d.empleados;
-    document.getElementById('k-t').textContent=d.resumen.trabajando;
-    document.getElementById('k-a').textContent=d.resumen.almuerzo;
-    document.getElementById('k-s').textContent=d.resumen.salio;
-    document.getElementById('k-au').textContent=d.resumen.ausente;
+// ── Datos ─────────────────────────────────────────────────────────────────────
+function setKpi(id, val) {
+  const el = document.getElementById(id);
+  if (el.textContent !== String(val)) {
+    el.textContent = val;
+    el.classList.remove('updated');
+    void el.offsetWidth;
+    el.classList.add('updated');
+  }
+}
+
+async function cargarDatos() {
+  try {
+    const r = await fetch(`${SERVIDOR}/admin/en-vivo`, { headers:{'x-admin-key': adminKey} });
+    const d = await r.json();
+    if (!d.ok) return;
+
+    todosEmpleados = d.empleados;
+
+    setKpi('k-t',  d.resumen.trabajando);
+    setKpi('k-a',  d.resumen.almuerzo);
+    setKpi('k-s',  d.resumen.salio);
+    setKpi('k-au', d.resumen.ausente);
+
+    // Tab counts
+    document.getElementById('fc-todos').textContent      = d.empleados.length;
+    document.getElementById('fc-trabajando').textContent = d.resumen.trabajando;
+    document.getElementById('fc-almuerzo').textContent   = d.resumen.almuerzo;
+    document.getElementById('fc-salio').textContent      = d.resumen.salio;
+    document.getElementById('fc-ausente').textContent    = d.resumen.ausente;
+
     renderEmpleados();
-    const n=new Date();
-    document.getElementById('dash-upd').textContent=`Actualizado: ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
-  }catch(e){document.getElementById('dash-upd').textContent='⚠️ Sin conexión — reintentando...';}
+
+    const n = new Date();
+    document.getElementById('dh-upd').textContent =
+      `Actualizado ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
+  } catch(e) {
+    document.getElementById('dh-upd').textContent = 'Sin conexión — reintentando...';
+  }
 }
 
-function filtrar(tipo){
-  filtroActivo=tipo;
-  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+// ── Filtros ───────────────────────────────────────────────────────────────────
+function filtrar(tipo) {
+  filtroActivo = tipo;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
   document.getElementById(`f-${tipo}`).classList.add('active');
   renderEmpleados();
 }
 
-function renderEmpleados(){
-  const lista=filtroActivo==='todos'?[...todosEmpleados]:todosEmpleados.filter(e=>e.estado===filtroActivo);
-  lista.sort((a,b)=>(ORDEN[a.estado]||0)-(ORDEN[b.estado]||0)||a.nombre.localeCompare(b.nombre));
-  const grid=document.getElementById('dash-grid');
-  if(!lista.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray-400);font-size:13px">Sin registros para este filtro</div>';return;}
-  grid.innerHTML=lista.map((e,i)=>`
-    <div class="ecard ${e.estado}" style="animation-delay:${i*.02}s">
-      <div class="etop">
-        <div class="ename">${e.nombre.split(' ').slice(0,2).join(' ')}</div>
-        <span class="ebadge ${e.estado}">${BADGE[e.estado]||e.estado}</span>
+// ── Render ────────────────────────────────────────────────────────────────────
+// SVG icons
+const ICO_ENTRY = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+const ICO_EXIT  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`;
+const ICO_WARN  = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>`;
+
+function renderEmpleados() {
+  const lista = filtroActivo === 'todos'
+    ? [...todosEmpleados]
+    : todosEmpleados.filter(e => e.estado === filtroActivo);
+
+  lista.sort((a,b) =>
+    (ORDEN[a.estado]||0) - (ORDEN[b.estado]||0) ||
+    a.nombre.localeCompare(b.nombre)
+  );
+
+  const grid = document.getElementById('dash-grid');
+
+  if (!lista.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <p>Sin registros para este filtro</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = lista.map((e, i) => {
+    const nombreCorto = e.nombre.split(' ').slice(0,2).join(' ');
+    const tarde = e.tardanza > 0
+      ? `<div class="etarde">${ICO_WARN} +${e.tardanza}m tarde</div>` : '';
+    const sinEntrada = !e.horaEntrada;
+
+    return `<div class="ecard ${e.estado}" style="animation-delay:${Math.min(i*.025,.3)}s">
+      <div class="ecard-strip"></div>
+      <div class="ecard-inner">
+        <div class="etop">
+          <div class="ename">${nombreCorto}</div>
+          <span class="ebadge">${BLABEL[e.estado]||e.estado}</span>
+        </div>
+        <div class="ehoras">${e.horas}</div>
+        <div class="ediv"></div>
+        <div class="etimes">
+          ${sinEntrada
+            ? `<span style="color:var(--red);font-size:11px">Sin entrada</span>`
+            : `<span class="etime-item">${ICO_ENTRY} ${e.horaEntrada}</span>`
+          }
+          ${e.horaSalida ? `<span class="etime-item">${ICO_EXIT} ${e.horaSalida}</span>` : ''}
+        </div>
+        ${tarde}
       </div>
-      <div class="ehoras">${e.horas}</div>
-      <div class="etimes">
-        ${e.horaEntrada?`<span>↑ ${e.horaEntrada}</span>`:'<span style="color:var(--red)">Sin entrada</span>'}
-        ${e.horaSalida?`<span>↓ ${e.horaSalida}</span>`:''}
-      </div>
-      ${e.tardanza>0?`<span class="etarde">+${e.tardanza}m tarde</span>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 </script>
 </body>
