@@ -3,196 +3,629 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Kerapodo — Reporte del Día</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<title>Kerapodo — Reportes de Asistencia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --bg:#f5f0e8;--navy:#1a2744;--gold:#c9923a;--gold2:#e0a84a;
-  --white:#fff;--muted:#7a8099;--green:#2d9e6b;--green-bg:#e8f7f0;
-  --red:#d94f4f;--red-bg:#fdeaea;--orange:#e07820;--orange-bg:#fef0e0;
-  --font-head:'Playfair Display',serif;--font-body:'Plus Jakarta Sans',sans-serif;
+  --blue:#1a4f8a;--blue-dark:#133d6e;--blue-light:#2563aa;--blue-pale:#e8f0fb;
+  --white:#ffffff;--gray-50:#f8f9fb;--gray-100:#eef0f4;--gray-200:#dde1ea;
+  --gray-400:#9aa3b5;--gray-600:#5a6478;--gray-900:#111827;
+  --green:#0d7a55;--green-pale:#e6f5ef;--amber:#b45309;--amber-pale:#fef3e2;
+  --red:#c0392b;--red-pale:#fdecea;--sky:#0369a1;--sky-pale:#e0f2fe;
+  --shadow-sm:0 1px 3px rgba(17,24,39,.06),0 1px 2px rgba(17,24,39,.04);
+  --shadow-md:0 4px 12px rgba(17,24,39,.08),0 2px 4px rgba(17,24,39,.04);
+  --shadow-xl:0 24px 64px rgba(17,24,39,.14),0 8px 24px rgba(17,24,39,.08);
+  --radius:12px;--radius-lg:18px;--radius-xl:26px;--radius-sm:8px;
+  --font-display:'DM Serif Display',Georgia,serif;
+  --font-body:'DM Sans',system-ui,sans-serif;
+  --ease-spring:cubic-bezier(0.34,1.56,0.64,1);
+  --ease-smooth:cubic-bezier(0.4,0,0.2,1);
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);font-family:var(--font-body);color:var(--navy);min-height:100vh;padding:24px 16px}
-.header{background:var(--navy);border-radius:20px;padding:24px;margin-bottom:24px;position:relative;overflow:hidden}
-.header::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,146,58,.12)}
-.brand{font-family:var(--font-head);font-size:26px;color:#fff;font-weight:700}
-.brand span{color:var(--gold2)}
-.header-sub{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:3px}
-.header-fecha{font-family:var(--font-head);font-size:18px;color:#fff;margin-top:12px}
-.header-horario{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--gray-50);font-family:var(--font-body);color:var(--gray-900);min-height:100vh;padding-bottom:40px;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 90% 70% at 50% -5%,rgba(26,79,138,.07) 0%,transparent 65%),radial-gradient(ellipse 50% 50% at 100% 100%,rgba(26,79,138,.04) 0%,transparent 55%);pointer-events:none}
 
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
-.stat{background:var(--white);border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(26,39,68,.08)}
-.stat-num{font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--navy)}
-.stat-num.green{color:var(--green)}
-.stat-num.red{color:var(--red)}
-.stat-num.orange{color:var(--orange)}
-.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+/* HEADER */
+.header{background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue) 60%,var(--blue-light) 100%);padding:24px;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 140% 90% at 115% -15%,rgba(255,255,255,.10) 0%,transparent 50%),radial-gradient(ellipse 70% 70% at -15% 115%,rgba(255,255,255,.05) 0%,transparent 50%);pointer-events:none}
+.header::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:32px 32px;pointer-events:none}
+.header-inner{position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.brand-text{font-family:var(--font-display);font-style:italic;font-size:26px;font-weight:700;color:var(--white);letter-spacing:-.01em;line-height:1}
+.brand-tag{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:14px}
 
-.seccion-titulo{font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-left:4px}
+/* CONTAINER */
+.container{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:20px 16px 0}
 
-.empleado-card{background:var(--white);border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(26,39,68,.06)}
-.emp-nombre{font-weight:600;font-size:14px;color:var(--navy)}
-.emp-fila{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap}
-.emp-dato{display:flex;flex-direction:column;align-items:center;gap:2px}
-.emp-dato-val{font-family:var(--font-head);font-size:16px;font-weight:600;color:var(--navy)}
-.emp-dato-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-.badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase}
-.badge.ok{background:var(--green-bg);color:var(--green)}
-.badge.alerta{background:var(--orange-bg);color:var(--orange)}
-.badge.descuento{background:var(--red-bg);color:var(--red)}
-.badge.banco{background:#e8eaff;color:#4a5cc9}
+/* LOGIN CARD */
+.login-card{background:var(--white);border-radius:var(--radius-xl);box-shadow:var(--shadow-xl);overflow:hidden;border:1px solid var(--gray-100);animation:riseIn .6s var(--ease-spring) both;margin-bottom:20px}
+@keyframes riseIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.login-head{background:var(--blue-pale);padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;gap:10px}
+.login-head-icon{width:32px;height:32px;border-radius:var(--radius-sm);background:var(--blue);display:flex;align-items:center;justify-content:center;color:var(--white);flex-shrink:0}
+.login-head-title{font-size:13px;font-weight:600;color:var(--blue)}
+.login-head-sub{font-size:11px;color:var(--gray-400);margin-top:1px}
+.login-body{padding:20px;display:flex;flex-direction:column;gap:12px}
+.field-label{font-size:11px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:5px}
+.field-input{width:100%;background:var(--gray-50);border:1.5px solid var(--gray-200);color:var(--gray-900);padding:11px 14px;border-radius:var(--radius);outline:none;font-family:var(--font-body);font-size:14px;transition:border-color .2s,box-shadow .2s}
+.field-input:focus{border-color:var(--blue);background:var(--white);box-shadow:0 0 0 3px rgba(26,79,138,.08)}
+.btn-primary{background:linear-gradient(135deg,var(--blue) 0%,var(--blue-light) 100%);color:var(--white);border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:14px;font-weight:600;padding:13px;cursor:pointer;width:100%;box-shadow:0 4px 14px rgba(26,79,138,.28);transition:filter .15s,transform .1s;letter-spacing:.02em}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-primary:active{transform:scale(.98)}
 
-.sin-datos{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
+/* PANEL REPORTE */
+.panel{background:var(--white);border-radius:var(--radius-xl);box-shadow:var(--shadow-md);overflow:hidden;border:1px solid var(--gray-100);margin-bottom:20px;animation:riseIn .5s var(--ease-spring) both}
 
-.config-form{background:var(--white);border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(26,39,68,.08)}
-.config-form label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:6px}
-.config-form input{width:100%;border:1.5px solid #e0d8cc;border-radius:10px;padding:10px 12px;font-family:var(--font-body);font-size:14px;color:var(--navy);background:var(--bg);outline:none;margin-bottom:12px}
-.config-form input:focus{border-color:var(--gold)}
-.btn-cargar{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:13px;font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
-.btn-cargar:hover{background:#243258}
-.loading{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+/* Periodos */
+.periodo-wrap{padding:16px 20px;border-bottom:1px solid var(--gray-100)}
+.periodo-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-400);margin-bottom:10px}
+.periodo-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.periodo-btn{font-size:12px;font-weight:500;padding:6px 14px;border-radius:100px;border:1.5px solid var(--gray-200);background:var(--gray-50);color:var(--gray-600);cursor:pointer;transition:all .15s;font-family:var(--font-body)}
+.periodo-btn:hover{background:var(--gray-100)}
+.periodo-btn.active{background:var(--blue);border-color:var(--blue);color:var(--white);font-weight:600}
+.rango-custom{display:none;gap:8px;align-items:center;margin-top:8px}
+.rango-custom.show{display:flex}
+.rango-custom input{flex:1;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:var(--font-body);outline:none;color:var(--gray-900);background:var(--gray-50)}
+.rango-custom input:focus{border-color:var(--blue)}
+.btn-ver{width:100%;background:var(--blue);color:var(--white);border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:600;padding:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;margin-top:10px}
+.btn-ver:hover{background:var(--blue-light)}
+.btn-ver:active{transform:scale(.98)}
+.btn-ver:disabled{opacity:.6;cursor:not-allowed}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 20px;border-bottom:1px solid var(--gray-100)}
+.kpi{background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:var(--radius);padding:14px 12px;text-align:center;position:relative;overflow:hidden;transition:transform .2s}
+.kpi:hover{transform:translateY(-1px)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.azul::before{background:linear-gradient(90deg,var(--blue),var(--blue-light))}
+.kpi.verde::before{background:linear-gradient(90deg,var(--green),#14a374)}
+.kpi.rojo::before{background:linear-gradient(90deg,var(--red),#e74c3c)}
+.kpi.amber::before{background:linear-gradient(90deg,var(--amber),#d97706)}
+.kpi-val{font-family:var(--font-display);font-size:26px;line-height:1;margin-top:4px}
+.kpi.azul .kpi-val{color:var(--blue)}
+.kpi.verde .kpi-val{color:var(--green)}
+.kpi.rojo  .kpi-val{color:var(--red)}
+.kpi.amber .kpi-val{color:var(--amber)}
+.kpi-lbl{font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+
+/* Resultados */
+.resultados-wrap{padding:16px 20px}
+.search-input{width:100%;border:1.5px solid var(--gray-100);border-radius:var(--radius-sm);padding:9px 12px;font-size:13px;font-family:var(--font-body);outline:none;color:var(--gray-900);background:var(--gray-50);margin-bottom:10px;transition:border-color .2s}
+.search-input:focus{border-color:var(--blue);background:var(--white)}
+
+/* Orden */
+.orden-wrap{margin-bottom:12px}
+.orden-title{font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.orden-btns{display:flex;flex-wrap:wrap;gap:5px}
+.orden-btn{font-size:11px;padding:5px 10px;border-radius:20px;border:1.5px solid var(--gray-200);background:var(--gray-50);color:var(--gray-600);cursor:pointer;font-weight:500;transition:all .15s;white-space:nowrap;font-family:var(--font-body)}
+.orden-btn.active{background:var(--blue);border-color:var(--blue);color:var(--white)}
+
+/* Export btns */
+.export-row{display:flex;gap:8px;margin-bottom:12px}
+.export-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;font-weight:500;color:var(--gray-600);cursor:pointer;transition:all .15s;font-family:var(--font-body)}
+.export-btn:hover{background:var(--gray-100);border-color:var(--gray-200)}
+.export-btn.verde{color:var(--green);border-color:rgba(13,122,85,.2);background:var(--green-pale)}
+.export-btn.verde:hover{background:#d4ede5}
+
+/* Emp rows */
+.emp-row{border:1.5px solid var(--gray-100);border-radius:var(--radius);margin-bottom:6px;overflow:hidden;transition:border-color .2s,box-shadow .2s;background:var(--white)}
+.emp-row:hover{border-color:var(--gray-200);box-shadow:var(--shadow-sm)}
+.emp-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+.emp-av{width:32px;height:32px;border-radius:50%;background:var(--blue-pale);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.emp-name{flex:1;font-size:13px;font-weight:600;color:var(--gray-900)}
+.emp-horas{font-family:var(--font-display);font-size:15px;color:var(--gray-900)}
+.emp-chevron{color:var(--gray-400);transition:transform .2s;font-size:12px;flex-shrink:0}
+.emp-chevron.open{transform:rotate(180deg)}
+.emp-alerta{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
+.emp-detail{display:none;padding:0 14px 14px;border-top:1px solid var(--gray-100)}
+.emp-detail.show{display:block}
+
+/* Mini stats */
+.mini-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;padding-top:12px}
+.mini-stat{text-align:center}
+.mini-val{font-size:14px;font-weight:600;color:var(--gray-900)}
+.mini-lbl{font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em}
+
+/* Alertas */
+.alerta-item{display:flex;align-items:center;gap:6px;background:var(--amber-pale);color:var(--amber);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:500;margin-bottom:4px}
+
+/* Tabla días */
+.dia-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+.dia-table th{color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;padding:5px 6px;text-align:left;font-weight:500;border-bottom:1px solid var(--gray-100)}
+.dia-table td{padding:5px 6px;border-bottom:1px solid var(--gray-50);color:var(--gray-600)}
+.dia-table tr:last-child td{border-bottom:none}
+.dia-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+
+/* Loading / empty */
+.loading{text-align:center;padding:32px;color:var(--gray-400);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.spinner{width:24px;height:24px;border-radius:50%;border:2px solid var(--gray-200);border-top-color:var(--blue);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="brand">Kera<span>podo</span></div>
-  <div class="header-sub">Reporte de Asistencia</div>
-  <div class="header-fecha" id="header-fecha">—</div>
-  <div class="header-horario" id="header-horario">—</div>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-text">KERAPODO</div>
+      <svg viewBox="0 0 32 42" fill="none" style="height:24px;width:auto">
+        <ellipse cx="16" cy="30" rx="10" ry="12" stroke="rgba(255,255,255,0.5)" stroke-width="1.8" fill="none"/>
+        <ellipse cx="6"  cy="12" rx="3"  ry="4"  stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+        <ellipse cx="13" cy="7"  rx="3"  ry="3.8" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+        <ellipse cx="21" cy="6"  rx="2.8" ry="3.5" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+        <ellipse cx="28" cy="9"  rx="2.5" ry="3.2" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+      </svg>
+    </div>
+    <div class="brand-tag">Reportes de Asistencia</div>
+  </div>
 </div>
 
-<div class="config-form" id="config-form">
-  <label>URL del servidor</label>
-  <input type="url" id="inp-url" placeholder="https://kerapodo-ponche.onrender.com"/>
-  <label>Contraseña admin</label>
-  <input type="password" id="inp-key" placeholder="••••••••"/>
-  <button class="btn-cargar" onclick="cargarReporte()">📊 Cargar Reporte</button>
-</div>
+<div class="container">
 
-<div id="contenido"></div>
+  <!-- LOGIN -->
+  <div class="login-card" id="login-card">
+    <div class="login-head">
+      <div class="login-head-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div>
+        <div class="login-head-title">Acceso al sistema</div>
+        <div class="login-head-sub">Ingresa tus credenciales para ver los reportes</div>
+      </div>
+    </div>
+    <div class="login-body">
+      <div>
+        <label class="field-label">URL del servidor</label>
+        <input type="url" class="field-input" id="inp-url" placeholder="https://ponche.kerapodo.com"/>
+      </div>
+      <div>
+        <label class="field-label">Contraseña admin</label>
+        <input type="password" class="field-input" id="inp-key" placeholder="••••••••" onkeydown="if(event.key==='Enter')conectar()"/>
+      </div>
+      <button class="btn-primary" onclick="conectar()">Acceder a reportes</button>
+      <div id="login-err" style="font-size:12px;color:var(--red);min-height:14px;text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- PANEL REPORTE -->
+  <div class="panel" id="panel-reporte" style="display:none">
+
+    <!-- Selector período -->
+    <div class="periodo-wrap">
+      <div class="periodo-title">Período del reporte</div>
+      <div class="periodo-btns">
+        <button class="periodo-btn active" onclick="setPeriodo('hoy',this)">Hoy</button>
+        <button class="periodo-btn" onclick="setPeriodo('7d',this)">7 días</button>
+        <button class="periodo-btn" onclick="setPeriodo('30d',this)">30 días</button>
+        <button class="periodo-btn" onclick="setPeriodo('mes',this)">Este mes</button>
+        <button class="periodo-btn" onclick="setPeriodo('custom',this)">Personalizado</button>
+      </div>
+      <div class="rango-custom" id="rango-custom">
+        <input type="date" id="rp-desde" onchange="actualizarRango()"/>
+        <span style="color:var(--gray-400);font-size:12px">—</span>
+        <input type="date" id="rp-hasta" onchange="actualizarRango()"/>
+      </div>
+      <button class="btn-ver" id="btn-ver" onclick="cargarReporte()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Ver reporte
+      </button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row" id="kpi-row" style="display:none">
+      <div class="kpi azul"><div class="kpi-val" id="k-emp">—</div><div class="kpi-lbl">Empleados</div></div>
+      <div class="kpi verde"><div class="kpi-val" id="k-punt">—</div><div class="kpi-lbl">Puntualidad</div></div>
+      <div class="kpi rojo"><div class="kpi-val" id="k-tarde">—</div><div class="kpi-lbl">Con tardanza</div></div>
+      <div class="kpi amber"><div class="kpi-val" id="k-alerta">—</div><div class="kpi-lbl">Con alertas</div></div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="resultados-wrap" id="resultados-wrap" style="display:none">
+      <input type="text" class="search-input" id="search-emp" placeholder="Buscar empleado..." oninput="filtrarEmps(this.value)"/>
+
+      <div class="orden-wrap">
+        <div class="orden-title">Ordenar por</div>
+        <div class="orden-btns" id="orden-btns">
+          <button class="orden-btn active" data-orden="puntos_desc" onclick="aplicarOrden('puntos_desc')">Mayor puntuación</button>
+          <button class="orden-btn" data-orden="puntos_asc"  onclick="aplicarOrden('puntos_asc')">Menor puntuación</button>
+          <button class="orden-btn" data-orden="horas_desc"  onclick="aplicarOrden('horas_desc')">Más horas</button>
+          <button class="orden-btn" data-orden="horas_asc"   onclick="aplicarOrden('horas_asc')">Menos horas</button>
+          <button class="orden-btn" data-orden="tarde_desc"  onclick="aplicarOrden('tarde_desc')">Más tardanzas</button>
+          <button class="orden-btn" data-orden="alfa_asc"    onclick="aplicarOrden('alfa_asc')">A — Z</button>
+        </div>
+      </div>
+
+      <div class="export-row">
+        <button class="export-btn" onclick="exportarCSV()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+        <button class="export-btn verde" onclick="exportarExcel()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+          Exportar Excel
+        </button>
+      </div>
+
+      <div id="lista-emps"></div>
+    </div>
+
+    <!-- Loading / empty -->
+    <div id="panel-loading" style="display:none;padding:20px 20px 32px">
+      <div class="loading"><div class="spinner"></div>Cargando datos...</div>
+    </div>
+    <div id="panel-empty" style="display:none;padding:20px">
+      <div class="empty">No hay registros en este período.</div>
+    </div>
+
+  </div>
+</div>
 
 <script>
-// Cargar config guardada
-const urlGuardada = localStorage.getItem('kp_servidor') || '';
-const keyGuardada = localStorage.getItem('kp_adminKey') || '';
-if (urlGuardada) document.getElementById('inp-url').value = urlGuardada;
-if (keyGuardada) document.getElementById('inp-key').value = keyGuardada;
+// ── Estado ────────────────────────────────────────────────────────
+let SERVER = '', ADMIN_KEY = '';
+let rpDatos = null, rpExpandidos = {}, rpOrden = 'puntos_desc';
+let rpDesde = '', rpHasta = '';
 
 const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
-function hoy() {
-  const d = new Date();
-  return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} ${d.getFullYear()}`;
-}
-document.getElementById('header-fecha').textContent = hoy();
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const urlG = localStorage.getItem('kp_servidor') || '';
+  // Solo auto-login si la sesión viene del kiosko (sessionStorage), nunca de localStorage directo
+  const keyG = sessionStorage.getItem('rp_key') || '';
+  if (urlG) document.getElementById('inp-url').value = urlG;
+  // No prellenar la contraseña si no hay sesión activa
+  setFechasHoy();
+  if (urlG && keyG) conectar(true);
+});
 
-async function cargarReporte() {
+function setFechasHoy() {
+  const d = new Date(); d.setHours(d.getHours()-4);
+  const h = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  rpDesde = h; rpHasta = h;
+  document.getElementById('rp-desde').value = h;
+  document.getElementById('rp-hasta').value = h;
+}
+
+// ── Conectar ──────────────────────────────────────────────────────
+async function conectar(autoload) {
   const url = document.getElementById('inp-url').value.trim().replace(/\/$/,'');
   const key = document.getElementById('inp-key').value.trim();
-  if (!url || !key) { alert('Completa la URL y la contraseña'); return; }
+  const err = document.getElementById('login-err');
+  if (!url || !key) { err.textContent = 'Completa la URL y la contraseña'; return; }
+  err.textContent = 'Verificando...';
+  try {
+    const r = await fetch(`${url}/admin/verificar`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      SERVER = url; ADMIN_KEY = key;
+      localStorage.setItem('kp_servidor', url);
+      sessionStorage.setItem('rp_key', key);
+      document.getElementById('login-card').style.display = 'none';
+      document.getElementById('panel-reporte').style.display = 'block';
+      err.textContent = '';
+      if (autoload) cargarReporte();
+    } else { err.textContent = 'Contraseña incorrecta'; }
+  } catch(e) { err.textContent = 'Sin conexión al servidor'; }
+}
 
-  localStorage.setItem('kp_servidor', url);
-  localStorage.setItem('kp_adminKey', key);
+// ── Período ───────────────────────────────────────────────────────
+function setPeriodo(tipo, btn) {
+  document.querySelectorAll('.periodo-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const rc = document.getElementById('rango-custom');
+  const d = new Date(); d.setHours(d.getHours()-4);
+  const pad = n => String(n).padStart(2,'0');
+  const hoy = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
 
-  document.getElementById('contenido').innerHTML = '<div class="loading">⏳ Cargando datos...</div>';
+  if (tipo === 'custom') { rc.classList.add('show'); return; }
+  rc.classList.remove('show');
+
+  let desde = hoy;
+  if (tipo === '7d')  { const x=new Date(d); x.setUTCDate(x.getUTCDate()-6); desde=`${x.getUTCFullYear()}-${pad(x.getUTCMonth()+1)}-${pad(x.getUTCDate())}`; }
+  if (tipo === '30d') { const x=new Date(d); x.setUTCDate(x.getUTCDate()-29); desde=`${x.getUTCFullYear()}-${pad(x.getUTCMonth()+1)}-${pad(x.getUTCDate())}`; }
+  if (tipo === 'mes') { desde=`${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-01`; }
+
+  rpDesde = desde; rpHasta = hoy;
+  document.getElementById('rp-desde').value = desde;
+  document.getElementById('rp-hasta').value = hoy;
+  document.getElementById('lista-emps').innerHTML = '';
+  document.getElementById('resultados-wrap').style.display = 'none';
+  document.getElementById('kpi-row').style.display = 'none';
+}
+
+function actualizarRango() {
+  rpDesde = document.getElementById('rp-desde').value;
+  rpHasta = document.getElementById('rp-hasta').value;
+}
+
+// ── Cargar reporte ────────────────────────────────────────────────
+async function cargarReporte() {
+  const btn = document.getElementById('btn-ver');
+  btn.textContent = 'Cargando...'; btn.disabled = true;
+  document.getElementById('panel-loading').style.display = 'block';
+  document.getElementById('resultados-wrap').style.display = 'none';
+  document.getElementById('kpi-row').style.display = 'none';
+  document.getElementById('panel-empty').style.display = 'none';
+  rpExpandidos = {};
 
   try {
-    const r = await fetch(`${url}/admin/reporte-hoy?adminKey=${encodeURIComponent(key)}`);
+    const r = await fetch(`${SERVER}/admin/reporte-rango?desde=${rpDesde}&hasta=${rpHasta}`, {
+      headers:{'x-admin-key':ADMIN_KEY}
+    });
     const d = await r.json();
+    if (!d.ok) throw new Error(d.error||'Error del servidor');
+    rpDatos = d;
+    renderResultados(d);
+  } catch(e) {
+    document.getElementById('panel-empty').style.display = 'block';
+    document.getElementById('panel-empty').querySelector('.empty').textContent = `Error: ${e.message}`;
+  }
 
-    if (d.error) { document.getElementById('contenido').innerHTML = `<div class="sin-datos">❌ Error: ${d.error}</div>`; return; }
+  document.getElementById('panel-loading').style.display = 'none';
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ver reporte';
+  btn.disabled = false;
+}
 
-    // Horario
-    const h = d.horario;
-    document.getElementById('header-horario').textContent = `${h.entrada} — ${h.salida} · Almuerzo: ${h.almuerzo} min · Extra desde: ${h.extraDesde}`;
+// ── Render ────────────────────────────────────────────────────────
+function renderResultados(d) {
+  if (!d.empleados || !d.empleados.length) {
+    document.getElementById('panel-empty').style.display = 'block';
+    return;
+  }
 
-    const empleados = d.empleados || [];
-    if (empleados.length === 0) {
-      document.getElementById('contenido').innerHTML = '<div class="sin-datos">No hay registros de asistencia hoy.</div>';
-      return;
-    }
+  // KPIs
+  const kr = document.getElementById('kpi-row');
+  kr.style.display = 'grid';
+  document.getElementById('k-emp').textContent   = d.kpis.total_empleados;
+  document.getElementById('k-punt').textContent  = d.kpis.puntualidad_promedio + '%';
+  document.getElementById('k-tarde').textContent = d.kpis.empleados_tarde;
+  document.getElementById('k-alerta').textContent= d.kpis.empleados_alerta;
 
-    // Estadísticas
-    const conDescuento = empleados.filter(e => (e.descuentoTarde + e.excesosAlmuerzo) > 0).length;
-    const conBanco     = empleados.filter(e => e.bancoExtra > 0).length;
-    const sinAlmuerzo  = empleados.filter(e => e.sin_almuerzo).length;
+  window._rpEmps = d.empleados;
+  renderLista();
+  document.getElementById('resultados-wrap').style.display = 'block';
+}
 
-    let html = `
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-num">${empleados.length}</div>
-          <div class="stat-label">Presentes</div>
+function renderLista() {
+  const q = document.getElementById('search-emp').value.toLowerCase();
+  let lista = [...(window._rpEmps||[])];
+
+  // Filtrar
+  if (q) lista = lista.filter(e => e.nombre.toLowerCase().includes(q));
+
+  // Ordenar
+  const ord = rpOrden;
+  lista.sort((a,b) => {
+    if (ord==='puntos_desc') return (b.calificacion?.puntos||0)-(a.calificacion?.puntos||0);
+    if (ord==='puntos_asc')  return (a.calificacion?.puntos||0)-(b.calificacion?.puntos||0);
+    if (ord==='horas_desc')  return (b.total_minutos||0)-(a.total_minutos||0);
+    if (ord==='horas_asc')   return (a.total_minutos||0)-(b.total_minutos||0);
+    if (ord==='tarde_desc')  return (b.dias_tarde||0)-(a.dias_tarde||0);
+    if (ord==='alfa_asc')    return a.nombre.localeCompare(b.nombre);
+    return 0;
+  });
+
+  document.getElementById('lista-emps').innerHTML = lista.map(renderEmp).join('');
+}
+
+function filtrarEmps(q) { renderLista(); }
+
+function aplicarOrden(orden) {
+  rpOrden = orden;
+  document.querySelectorAll('.orden-btn').forEach(b => b.classList.toggle('active', b.dataset.orden===orden));
+  renderLista();
+}
+
+function toggleEmp(id) {
+  rpExpandidos[id] = !rpExpandidos[id];
+  const row = document.getElementById(`erow-${id}`);
+  if (!row || !rpDatos) return;
+  const emp = rpDatos.empleados.find(e=>e.id===id);
+  if (emp) row.outerHTML = renderEmp(emp);
+}
+
+function renderEmp(e) {
+  const isExp = rpExpandidos[e.id];
+  const tieneAlerta = e.alertas && e.alertas.length > 0;
+  const cal = e.calificacion || {letra:'—',puntos:0,color:'#9aa3b5',descripcion:''};
+
+  let detalle = '';
+  if (isExp) {
+    detalle = `<div class="emp-detail show">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100);margin-bottom:10px">
+        <div style="width:50px;height:50px;border-radius:50%;background:${cal.color}18;border:2.5px solid ${cal.color};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
+          <span style="font-family:var(--font-display);font-size:19px;font-weight:700;color:${cal.color};line-height:1">${cal.letra}</span>
+          <span style="font-size:9px;color:${cal.color};font-weight:700">${cal.puntos}pts</span>
         </div>
-        <div class="stat">
-          <div class="stat-num red">${conDescuento}</div>
-          <div class="stat-label">Con descuento</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${cal.descripcion}</div>
+          <div style="font-size:10px;color:var(--gray-400);margin-top:3px;line-height:1.5">
+            ${cal.desglose?`Tard: -${cal.desglose.tardanza}pts · Sin alm: -${cal.desglose.sinAlmuerzo}pts · Exc: -${cal.desglose.excesoAlm}pts · Incomp: -${cal.desglose.incompletos}pts`:''}
+          </div>
         </div>
-        <div class="stat">
-          <div class="stat-num orange">${sinAlmuerzo}</div>
-          <div class="stat-label">Sin almuerzo</div>
+        <button onclick="exportarEmpleadoExcel(${e.id})" style="background:var(--green-pale);border:1.5px solid rgba(13,122,85,.2);border-radius:8px;padding:7px 11px;font-size:11px;font-weight:600;color:var(--green);cursor:pointer;display:flex;align-items:center;gap:4px;flex-shrink:0;white-space:nowrap;font-family:var(--font-body)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Excel
+        </button>
+      </div>
+
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-val">${e.dias_trabajados}</div><div class="mini-lbl">Días</div></div>
+        <div class="mini-stat"><div class="mini-val" style="color:var(--green)">${e.horas_efectivas}</div><div class="mini-lbl">Efectivas</div></div>
+        <div class="mini-stat"><div class="mini-val" style="color:${e.total_descuentos>0?'var(--red)':'var(--gray-300)'}">${e.desc_fmt}</div><div class="mini-lbl">Descuento</div></div>
+        <div class="mini-stat"><div class="mini-val" style="color:${(e.total_banco||0)>0?'var(--sky)':'var(--gray-300)'}">${e.banco_fmt}</div><div class="mini-lbl">Banco</div></div>
+      </div>
+
+      <div style="background:var(--gray-50);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Promedios</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+          <div>
+            <div style="font-family:var(--font-display);font-size:17px;color:var(--gray-900)">${e.promedio_entrada||'—'}</div>
+            <div style="font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Llegada prom.</div>
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-size:17px;color:var(--gray-900)">${e.promedio_salida||'—'}</div>
+            <div style="font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Salida prom.</div>
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-size:17px;color:var(--gray-900)">${e.promedio_almuerzo||'—'}</div>
+            <div style="font-size:9px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Almuerzo prom.</div>
+          </div>
         </div>
       </div>
-      <div class="seccion-titulo">Detalle por empleado</div>
-    `;
 
-    empleados.forEach(e => {
-      const descuento = e.descuentoTarde + e.excesosAlmuerzo;
-      const badges = [];
-      if (e.sin_almuerzo) badges.push(`<span class="badge alerta">⚠️ Sin almuerzo</span>`);
-      if (e.descuentoTarde > 0) badges.push(`<span class="badge descuento">⏰ Tarde: ${e.descuentoTarde} min</span>`);
-      if (e.excesosAlmuerzo > 0) badges.push(`<span class="badge descuento">🍽️ Exceso: ${e.excesosAlmuerzo} min</span>`);
-      if (e.bancoExtra > 0) badges.push(`<span class="badge banco">⭐ Extra: +${e.bancoExtra} min</span>`);
-      if (!e.sin_almuerzo && descuento === 0 && e.bancoExtra === 0) badges.push(`<span class="badge ok">✅ Sin novedad</span>`);
+      ${(e.alertas||[]).map(a=>`<div class="alerta-item">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        ${a}
+      </div>`).join('')}
 
-      html += `
-        <div class="empleado-card">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div class="emp-nombre">${e.nombre}</div>
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${badges.join('')}</div>
-          <div class="emp-fila">
-            <div class="emp-dato">
-              <div class="emp-dato-val">${minutosAHora(e.minutosTrabajados)}</div>
-              <div class="emp-dato-lbl">Trabajadas</div>
-            </div>
-            <div class="emp-dato">
-              <div class="emp-dato-val" style="color:${descuento>0?'var(--red)':'var(--navy)'}">${descuento > 0 ? '-'+descuento+' min' : '—'}</div>
-              <div class="emp-dato-lbl">Descuento</div>
-            </div>
-            <div class="emp-dato">
-              <div class="emp-dato-val" style="color:${e.bancoExtra>0?'#4a5cc9':'var(--navy)'}">${e.bancoExtra > 0 ? '+'+e.bancoExtra+' min' : '—'}</div>
-              <div class="emp-dato-lbl">Banco</div>
-            </div>
-            <div class="emp-dato">
-              <div class="emp-dato-val" style="color:var(--green)">${e.horas_efectivas_fmt}</div>
-              <div class="emp-dato-lbl">Efectivas</div>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-
-    document.getElementById('contenido').innerHTML = html;
-    document.getElementById('config-form').style.display = 'none';
-
-  } catch(e) {
-    document.getElementById('contenido').innerHTML = `<div class="sin-datos">❌ No se pudo conectar al servidor</div>`;
+      <table class="dia-table">
+        <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Almuerzo</th><th>Horas</th><th>Estado</th></tr>
+        ${(e.detalle_dias||[]).map(d=>{
+          const bs=[];
+          if(d.incompleto) bs.push('<span class="dia-badge" style="background:var(--red-pale);color:var(--red)">Incompleto</span>');
+          else if(d.desc_tarde>0) bs.push('<span class="dia-badge" style="background:var(--red-pale);color:var(--red)">+'+d.desc_tarde+'m tarde</span>');
+          if(d.sin_almuerzo) bs.push('<span class="dia-badge" style="background:var(--amber-pale);color:var(--amber)">Sin alm.</span>');
+          if(d.desc_exceso>0) bs.push('<span class="dia-badge" style="background:var(--amber-pale);color:var(--amber)">+'+d.desc_exceso+'m exc.</span>');
+          if(d.banco_extra>0) bs.push('<span class="dia-badge" style="background:var(--green-pale);color:var(--green)">+'+d.banco_extra+'m extra</span>');
+          if(!bs.length) bs.push('<span class="dia-badge" style="background:var(--green-pale);color:var(--green)">OK</span>');
+          const alm=d.dur_almuerzo>0?(Math.floor(d.dur_almuerzo/60)?Math.floor(d.dur_almuerzo/60)+'h ':'')+(d.dur_almuerzo%60)+'m':'—';
+          return '<tr>'
+            +'<td>'+d.dia.substring(5)+'</td>'
+            +'<td style="color:'+(d.sin_entrada?'var(--red)':'inherit')+'">'+d.hora_entrada+'</td>'
+            +'<td style="color:'+(d.sin_salida?'var(--red)':'inherit')+'">'+d.hora_salida+'</td>'
+            +'<td style="color:'+(d.dur_almuerzo>90?'var(--amber)':'inherit')+'">'+alm+'</td>'
+            +'<td style="font-weight:600">'+d.horas_fmt+'</td>'
+            +'<td>'+bs.join(' ')+'</td>'
+            +'</tr>';
+        }).join('')}
+      </table>
+    </div>`;
   }
+
+  return `<div class="emp-row" id="erow-${e.id}">
+    <div class="emp-header" onclick="toggleEmp(${e.id})">
+      <div class="emp-av">${e.nombre.charAt(0)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="emp-name">${e.nombre}</div>
+        <div style="font-size:10px;color:${cal.color};font-weight:600;margin-top:1px">${cal.letra} · ${cal.puntos}pts</div>
+      </div>
+      ${tieneAlerta?'<div class="emp-alerta"></div>':''}
+      <div class="emp-horas">${e.horas_totales}</div>
+      <div class="emp-chevron ${isExp?'open':''}">▾</div>
+    </div>
+    ${detalle}
+  </div>`;
 }
 
-function minutosAHora(min) {
-  if (!min) return '0:00';
-  const h = Math.floor(min/60);
-  const m = min % 60;
-  return `${h}:${String(m).padStart(2,'0')}`;
+// ── Exportar CSV ──────────────────────────────────────────────────
+function exportarCSV() {
+  if (!rpDatos) return;
+  const rows = [['Empleado','Días','Horas Totales','Horas Efectivas','Descuentos','Banco Extra','Días Tarde','Sin Almuerzo','Incompletos','Calificación','Puntos','Descripción']];
+  rpDatos.empleados.forEach(e => {
+    const cal = e.calificacion || {};
+    rows.push([e.nombre, e.dias_trabajados, e.horas_totales, e.horas_efectivas, e.desc_fmt, e.banco_fmt, e.dias_tarde, e.dias_sin_almuerzo, e.dias_incompletos||0, cal.letra||'—', cal.puntos||0, cal.descripcion||'']);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `kerapodo-${rpDesde}-${rpHasta}.csv`;
+  a.click();
 }
 
-// Auto-cargar si hay config guardada
-if (urlGuardada && keyGuardada) cargarReporte();
+// ── Exportar Excel ────────────────────────────────────────────────
+async function exportarExcel() {
+  if (!rpDatos) return;
+  if (!window.XLSX) {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    document.head.appendChild(s);
+    await new Promise(r => s.onload = r);
+  }
+  const wb = window.XLSX.utils.book_new();
+
+  // Hoja resumen
+  const res = [
+    ['KERAPODO — Reporte de Asistencia'],
+    [`Período: ${rpDesde} al ${rpHasta}`],[''],
+    ['Empleado','Días','Horas Totales','Horas Efectivas','Descuentos','Banco Extra','Días Tarde','Sin Almuerzo','Incompletos','Calificación','Puntos','Estado'],
+  ];
+  rpDatos.empleados.forEach(e => {
+    const cal = e.calificacion || {};
+    res.push([e.nombre, e.dias_trabajados, e.horas_totales, e.horas_efectivas, e.desc_fmt, e.banco_fmt, e.dias_tarde, e.dias_sin_almuerzo, e.dias_incompletos||0, cal.letra||'—', cal.puntos||0, cal.descripcion||'']);
+  });
+  const ws1 = window.XLSX.utils.aoa_to_sheet(res);
+  ws1['!cols'] = [{wch:30},{wch:6},{wch:14},{wch:14},{wch:12},{wch:12},{wch:10},{wch:12},{wch:12},{wch:12},{wch:8},{wch:22}];
+  window.XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+
+  // Hoja detalle
+  const det = [['Empleado','Fecha','Entrada','Salida','Horas','Tarde (min)','Exceso Alm (min)','Banco Extra (min)','Sin Almuerzo','Incompleto','Estado']];
+  rpDatos.empleados.forEach(e => {
+    (e.detalle_dias||[]).forEach(d => {
+      const est = d.incompleto?'Incompleto':(d.desc_tarde>0||d.desc_exceso>0||d.sin_almuerzo)?'Con novedad':'OK';
+      det.push([e.nombre, d.dia, d.hora_entrada, d.hora_salida, d.horas_fmt, d.desc_tarde||0, d.desc_exceso||0, d.banco_extra||0, d.sin_almuerzo?'Sí':'No', d.incompleto?'Sí':'No', est]);
+    });
+  });
+  const ws2 = window.XLSX.utils.aoa_to_sheet(det);
+  ws2['!cols'] = [{wch:30},{wch:12},{wch:10},{wch:10},{wch:8},{wch:12},{wch:15},{wch:15},{wch:12},{wch:12},{wch:14}];
+  window.XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por día');
+
+  window.XLSX.writeFile(wb, `kerapodo-${rpDesde}-${rpHasta}.xlsx`);
+}
+
+// ── Exportar empleado individual ──────────────────────────────────
+async function exportarEmpleadoExcel(id) {
+  if (!rpDatos) return;
+  const emp = rpDatos.empleados.find(e=>e.id===id);
+  if (!emp) return;
+  if (!window.XLSX) {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    document.head.appendChild(s);
+    await new Promise(r => s.onload = r);
+  }
+  const wb = window.XLSX.utils.book_new();
+  const cal = emp.calificacion || {};
+  const res = [
+    [emp.nombre],
+    [`Período: ${rpDesde} al ${rpHasta}`],[''],
+    ['Días trabajados', emp.dias_trabajados],
+    ['Horas totales', emp.horas_totales],
+    ['Horas efectivas', emp.horas_efectivas],
+    ['Descuentos', emp.desc_fmt],
+    ['Banco extra', emp.banco_fmt],
+    ['Días tarde', emp.dias_tarde],
+    ['Sin almuerzo', emp.dias_sin_almuerzo],
+    ['Incompletos', emp.dias_incompletos||0],
+    ['Puntualidad', emp.puntualidad+'%'],
+    ['Promedio entrada', emp.promedio_entrada||'—'],
+    ['Promedio salida', emp.promedio_salida||'—'],
+    ['Promedio almuerzo', emp.promedio_almuerzo||'—'],
+    ['CALIFICACIÓN', cal.letra||'—'],
+    ['Puntos', cal.puntos||0],
+    ['Estado', cal.descripcion||''],
+  ];
+  const ws1 = window.XLSX.utils.aoa_to_sheet(res);
+  ws1['!cols'] = [{wch:22},{wch:18}];
+  window.XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+
+  const det = [['Fecha','Entrada','Salida','Almuerzo (min)','Horas','Tarde (min)','Exceso Alm (min)','Banco Extra (min)','Sin Almuerzo','Incompleto','Estado']];
+  (emp.detalle_dias||[]).forEach(d => {
+    const est = d.incompleto?'Incompleto':(d.desc_tarde>0||d.desc_exceso>0||d.sin_almuerzo)?'Con novedad':'OK';
+    det.push([d.dia, d.hora_entrada, d.hora_salida, d.dur_almuerzo||0, d.horas_fmt, d.desc_tarde||0, d.desc_exceso||0, d.banco_extra||0, d.sin_almuerzo?'Sí':'No', d.incompleto?'Sí':'No', est]);
+  });
+  const ws2 = window.XLSX.utils.aoa_to_sheet(det);
+  ws2['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:14},{wch:8},{wch:12},{wch:15},{wch:15},{wch:12},{wch:12},{wch:14}];
+  window.XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por día');
+
+  window.XLSX.writeFile(wb, `kerapodo-${emp.nombre.replace(/ /g,'-')}-${rpDesde}-${rpHasta}.xlsx`);
+}
 </script>
 </body>
 </html>
