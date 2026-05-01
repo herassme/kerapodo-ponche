@@ -2292,22 +2292,39 @@ function abrirEliminar(pin, nombre) {
   const c = document.getElementById('admin-content');
   c.innerHTML = `<div class="ac-title">Eliminar empleado</div>
     <div style="font-size:13px;color:var(--gray-600);margin-bottom:12px">${nombre}</div>
-    <div style="font-size:13px;color:var(--gray-900);line-height:1.6;background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:var(--radius);padding:14px">
-      ¿Confirmas que deseas eliminar a este empleado del sistema de ponche?<br/>
+    <div style="font-size:13px;color:var(--gray-900);line-height:1.6;background:var(--red-pale);border:1.5px solid rgba(192,57,43,.15);border-radius:var(--radius);padding:14px">
+      ⚠️ Esta acción eliminará a <strong>${nombre}</strong> del sistema de ponche.<br/>
       <span style="color:var(--gray-400);font-size:12px;margin-top:6px;display:block">Su historial de asistencia en Odoo no será afectado.</span>
     </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--gray-600)">Para confirmar, escribe el nombre del empleado:</div>
+    <input type="text" id="confirm-nombre" class="ac-form-input" placeholder="${nombre}" style="margin-top:6px"/>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="ac-btn-secondary" onclick="renderTabEmpleados()">Cancelar</button>
-      <button class="ac-btn-danger" onclick="confirmarEliminar('${pin}')">Eliminar del sistema</button>
+      <button class="ac-btn-danger" onclick="confirmarEliminar('${pin}','${nombre.replace(/'/g,"\\'")}')">Eliminar del sistema</button>
     </div>`;
 }
 
-async function confirmarEliminar(pin) {
+async function confirmarEliminar(pin, nombre) {
+  const input = document.getElementById('confirm-nombre');
+  if (!input || input.value.trim().toLowerCase() !== nombre.trim().toLowerCase()) {
+    toast('El nombre no coincide — escríbelo exactamente', 'err');
+    return;
+  }
   try {
-    const r = await fetch(`${CONFIG.servidor}/admin/pin/${pin}`, { method:'DELETE', headers:{'x-admin-key':CONFIG.adminKey} });
-    const d = await r.json();
-    if (d.ok) { toast('Empleado eliminado', 'ok'); empleadosAdmin = []; renderTabEmpleados(); }
-    else toast(d.error || 'Error', 'err');
+    // Paso 1: solicitar token
+    const r1 = await fetch(`${CONFIG.servidor}/admin/pin/${pin}/solicitar-borrado`, {
+      method:'POST', headers:{'x-admin-key':CONFIG.adminKey}
+    });
+    const d1 = await r1.json();
+    if (!d1.ok) { toast(d1.error || 'Error', 'err'); return; }
+
+    // Paso 2: confirmar con token
+    const r2 = await fetch(`${CONFIG.servidor}/admin/pin/${pin}?token=${d1.token}`, {
+      method:'DELETE', headers:{'x-admin-key':CONFIG.adminKey}
+    });
+    const d2 = await r2.json();
+    if (d2.ok) { toast('Empleado eliminado correctamente', 'ok'); empleadosAdmin = []; renderTabEmpleados(); }
+    else toast(d2.error || 'Error', 'err');
   } catch(e) { toast('Error de conexión', 'err'); }
 }
 
