@@ -1066,9 +1066,17 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
         {fields:['employee_id','check_in','check_out'], order:'employee_id asc,check_in asc', limit:5000}
       ]
     );
-    console.log('[REPORTE-XML]', xmlRango.substring(0, 1000));
     const regs = parseAttendanceXml(xmlRango);
     console.log('[REPORTE-RANGO] Registros encontrados:', regs.length);
+
+    // Obtener IDs de registros con salida automática
+    let autoClockoutIds = new Set();
+    if (mongoDb) {
+      const autos = await mongoDb.collection('auto_clockouts')
+        .find({ check_in: { $gte: desdeUTC, $lte: hastaUTC } })
+        .toArray();
+      autos.forEach(a => autoClockoutIds.add(a.attendance_id));
+    }
 
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
@@ -1171,9 +1179,12 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
         const sinSalida  = ultimo.check_in && !ultimo.check_out;
         const incompleto = sinEntrada || sinSalida;
 
-        // Descuentos y banco
+        // Detectar si el último registro fue auto clock-out
+        const esAutoClockout = ultimo.id && autoClockoutIds.has(parseInt(ultimo.id));
+
+        // Descuentos y banco — si es auto clock-out, banco extra = 0
         const descTarde   = !incompleto && minEntrada > minPermitido ? minEntrada - minPermitido : 0;
-        const bancoExtra  = minSalida && minSalida > minExtraDesde ? minSalida - minExtraDesde : 0;
+        const bancoExtra  = esAutoClockout ? 0 : (minSalida && minSalida > minExtraDesde ? minSalida - minExtraDesde : 0);
         const tieneAlm    = regsD.length > 1;
 
         // Exceso almuerzo
@@ -1220,6 +1231,7 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
           sin_entrada:        sinEntrada,
           sin_salida:         sinSalida,
           es_finde:           finde,
+          auto_clockout:      esAutoClockout,
         });
       });
 
@@ -1510,10 +1522,100 @@ app.get('/admin/asistencias-hoy', requireAdmin, async (req,res) => {
 });
 
 // ── ARRANQUE ──────────────────────────────────────────────────────────────────
+// ── AUTO CLOCK-OUT ────────────────────────────────────────────────────────────
+const AUTO_CLOCKOUT_HORA = '22:00'; // 10:00 PM hora RD
+
+async function ejecutarAutoClockout() {
+  console.log('[AUTO-CLOCKOUT] Iniciando...');
+  try {
+    if (!odooUID) await odooLogin();
+
+    // Construir timestamp de las 10 PM de hoy en UTC (RD = UTC-4, 10 PM RD = 02:00 UTC del día siguiente)
+    const ahoraRDms = Date.now() - 4*3600000;
+    const dRD = new Date(ahoraRDms);
+    const pad = n => String(n).padStart(2,'0');
+
+    // 22:00 RD = 02:00 UTC siguiente día
+    const checkoutUTC = new Date(Date.UTC(
+      dRD.getUTCFullYear(), dRD.getUTCMonth(), dRD.getUTCDate() + 1, 2, 0, 0
+    ));
+    const checkoutStr = `${checkoutUTC.getUTCFullYear()}-${pad(checkoutUTC.getUTCMonth()+1)}-${pad(checkoutUTC.getUTCDate())} 02:00:00`;
+
+    // Buscar todas las entradas abiertas del día de hoy
+    const inicioHoy = inicioDiaUTC();
+    const xmlAbiertos = await xmlrpcCallRaw('/xmlrpc/2/object','execute_kw',
+      [ODOO_DB, odooUID, ODOO_PASS, 'hr.attendance', 'search_read',
+        [[['check_out','=',false],['check_in','>=',inicioHoy]]],
+        {fields:['id','employee_id','check_in'], order:'check_in asc', limit:200}
+      ]
+    );
+    const abiertos = parseAttendanceXml(xmlAbiertos);
+
+    if (!abiertos.length) {
+      console.log('[AUTO-CLOCKOUT] Sin entradas abiertas.');
+      return;
+    }
+
+    let cerrados = 0;
+    for (const reg of abiertos) {
+      try {
+        const regId = parseInt(reg.id);
+        // Cerrar la entrada con 22:00 RD
+        await odooExecute('hr.attendance','write',[[regId],{ check_out: checkoutStr }]);
+
+        // Registrar en MongoDB para el reporte
+        if (mongoDb) {
+          await mongoDb.collection('auto_clockouts').insertOne({
+            attendance_id: regId,
+            employee_id: Array.isArray(reg.employee_id) ? reg.employee_id[0] : reg.employee_id,
+            nombre: Array.isArray(reg.employee_id) ? reg.employee_id[1] : '?',
+            check_in: reg.check_in,
+            check_out: checkoutStr,
+            fecha: new Date().toISOString()
+          });
+        }
+        cerrados++;
+      } catch(err) {
+        console.error(`[AUTO-CLOCKOUT] Error en registro ${reg.id}:`, err.message);
+      }
+    }
+    console.log(`[AUTO-CLOCKOUT] Completado — ${cerrados} empleados con salida automática registrada`);
+  } catch(e) {
+    console.error('[AUTO-CLOCKOUT] Error:', e.message);
+  }
+}
+
+// Ruta manual para ejecutar auto clock-out (admin)
+app.post('/admin/auto-clockout', requireAdmin, async (req,res) => {
+  await ejecutarAutoClockout();
+  res.json({ok:true, mensaje:'Auto clock-out ejecutado'});
+});
+
+// Programar auto clock-out diario a las 10:00 PM RD
+function programarAutoClockout() {
+  const ahora = new Date();
+  // Calcular milisegundos hasta las 22:00 RD (02:00 UTC del día siguiente)
+  const ahoraRD = new Date(Date.now() - 4*3600000);
+  const target  = new Date(Date.UTC(
+    ahoraRD.getUTCFullYear(), ahoraRD.getUTCMonth(), ahoraRD.getUTCDate() + 1, 2, 0, 0
+  ));
+  // Si ya pasaron las 10 PM hoy, programar para mañana
+  let msHasta = target.getTime() - Date.now();
+  if (msHasta < 0) msHasta += 24 * 3600000;
+
+  console.log(`[AUTO-CLOCKOUT] Próxima ejecución en ${Math.round(msHasta/60000)} minutos`);
+  setTimeout(async () => {
+    await ejecutarAutoClockout();
+    // Reprogramar para mañana
+    setInterval(ejecutarAutoClockout, 24 * 3600000);
+  }, msHasta);
+}
+
 async function arrancar() {
   await conectarMongo();
   await odooLogin();
   await cargarPinesDesdeGitHub();
+  programarAutoClockout();
   app.listen(PORT, () => {
     console.log(`\n🦶 Kerapodo Ponche v3.0 — Puerto ${PORT}`);
     console.log(`📡 Odoo: ${ODOO_URL}`);
