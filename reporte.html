@@ -489,7 +489,8 @@ function renderEmp(e) {
         <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Almuerzo</th><th>Horas</th><th>Estado</th></tr>
         ${(e.detalle_dias||[]).map(d=>{
           const bs=[];
-          if(d.incompleto) bs.push('<span class="dia-badge" style="background:var(--red-pale);color:var(--red)">Incompleto</span>');
+          if(d.dia_libre) { bs.push('<span class="dia-badge" style="background:var(--sky-pale);color:var(--sky)">Día libre</span>'); }
+          else if(d.incompleto) bs.push('<span class="dia-badge" style="background:var(--red-pale);color:var(--red)">Incompleto</span>');
           else if(d.desc_tarde>0) bs.push('<span class="dia-badge" style="background:var(--red-pale);color:var(--red)">+'+d.desc_tarde+'m tarde</span>');
           if(d.sin_almuerzo) bs.push('<span class="dia-badge" style="background:var(--amber-pale);color:var(--amber)">Sin alm.</span>');
           if(d.desc_exceso>0) bs.push('<span class="dia-badge" style="background:var(--amber-pale);color:var(--amber)">+'+d.desc_exceso+'m exc.</span>');
