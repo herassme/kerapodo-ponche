@@ -1078,6 +1078,13 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
       autos.forEach(a => autoClockoutIds.add(a.attendance_id));
     }
 
+    // Cargar días libres de todos los empleados
+    let diasLibresMap = {};
+    if (mongoDb) {
+      const dlDocs = await mongoDb.collection('dias_libres').find({}).toArray();
+      dlDocs.forEach(d => { diasLibresMap[d.odoo_id] = { dias_fijos: d.dias_fijos||[], fechas: d.fechas||[] }; });
+    }
+
     function horaAMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
     function minAHora(min){ if(!min||min<0)return'0:00'; return `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`; }
     function horaLocalRD(fechaUTC){
@@ -1140,12 +1147,41 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
       }};
     }
 
+    // Función para verificar si un día es libre para un empleado
+    function esDiaLibre(odooId, diaStr, dlMap) {
+      const dl = dlMap[odooId];
+      if (!dl) return false;
+      // Verificar fecha específica
+      if (dl.fechas && dl.fechas.includes(diaStr)) return true;
+      // Verificar día de semana fijo
+      if (dl.dias_fijos && dl.dias_fijos.length) {
+        const fecha = new Date(diaStr + 'T12:00:00Z');
+        const diaSemana = fecha.getUTCDay(); // 0=domingo
+        if (dl.dias_fijos.includes(diaSemana)) return true;
+      }
+      return false;
+    }
+
     const resumen = Object.values(porEmp).map(emp => {
       let totalMin=0, totalDesc=0, totalBanco=0;
       let diasTrabajados=0, diasTarde=0, diasSinAlmuerzo=0, diasExceso=0, diasIncompletos=0;
       const detalleDias = [];
 
       Object.entries(emp.dias).forEach(([dia, regsD]) => {
+        // Verificar si es día libre para este empleado
+        if (esDiaLibre(emp.id, dia, diasLibresMap)) {
+          detalleDias.push({
+            dia, hora_entrada:'—', hora_salida:'—',
+            min_entrada:null, min_salida:null,
+            minutos_trabajados:0, horas_fmt:'—',
+            desc_tarde:0, desc_exceso:0, banco_extra:0,
+            sin_almuerzo:false, dur_almuerzo:0,
+            incompleto:false, sin_entrada:false, sin_salida:false,
+            es_finde:false, auto_clockout:false, dia_libre:true,
+          });
+          return; // excluir del cálculo
+        }
+
         const finde = regsD[0] && esFinde(regsD[0].check_in);
         const horario = finde
           ? { entrada:'09:00', salida:'15:00', extraDesde:'15:30', almuerzo:60 }
@@ -1301,6 +1337,67 @@ app.get('/admin/reporte-rango', requireAdmin, async (req,res) => {
   }
 });
 
+// ── DÍAS LIBRES ───────────────────────────────────────────────────────────────
+const DIAS_SEMANA = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+// Obtener días libres de un empleado
+app.get('/admin/dias-libres/:odoo_id', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.json({ok:true, dias_fijos:[], dias_semana:[], fechas:[]});
+  const odoo_id = parseInt(req.params.odoo_id);
+  const doc = await mongoDb.collection('dias_libres').findOne({odoo_id}) || {dias_fijos:[], fechas:[]};
+  const diasFijos = doc.dias_fijos || doc.dias_semana || [];
+  res.json({ok:true, odoo_id, dias_fijos: diasFijos, dias_semana: diasFijos, fechas: doc.fechas||[]});
+});
+
+// Guardar días libres de un empleado
+app.post('/admin/dias-libres/:odoo_id', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.status(500).json({error:'MongoDB no disponible'});
+  const odoo_id = parseInt(req.params.odoo_id);
+  const { dias_fijos, fechas, dias_semana, nombre } = req.body;
+  // Soportar tanto dias_fijos como dias_semana (alias)
+  const diasFijosFinales = dias_fijos || dias_semana || [];
+  const doc = await mongoDb.collection('dias_libres').findOne({odoo_id}) || {};
+  await mongoDb.collection('dias_libres').updateOne(
+    { odoo_id },
+    { $set: { odoo_id, nombre: nombre||doc.nombre||'', dias_fijos: diasFijosFinales, fechas: fechas||doc.fechas||[], updated_at: new Date().toISOString() } },
+    { upsert: true }
+  );
+  res.json({ok:true});
+});
+
+// Agregar fecha específica
+app.post('/admin/dias-libres/:odoo_id/fecha', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.status(500).json({error:'MongoDB no disponible'});
+  const odoo_id = parseInt(req.params.odoo_id);
+  const { fecha } = req.body;
+  if (!fecha) return res.status(400).json({error:'Falta fecha'});
+  await mongoDb.collection('dias_libres').updateOne(
+    { odoo_id },
+    { $addToSet: { fechas: fecha }, $set: { updated_at: new Date().toISOString() } },
+    { upsert: true }
+  );
+  res.json({ok:true});
+});
+
+// Eliminar fecha específica
+app.delete('/admin/dias-libres/:odoo_id/fecha/:fecha', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.status(500).json({error:'MongoDB no disponible'});
+  const odoo_id = parseInt(req.params.odoo_id);
+  const { fecha } = req.params;
+  await mongoDb.collection('dias_libres').updateOne(
+    { odoo_id },
+    { $pull: { fechas: fecha }, $set: { updated_at: new Date().toISOString() } }
+  );
+  res.json({ok:true});
+});
+
+// Obtener todos los días libres (para el reporte)
+app.get('/admin/dias-libres', requireAdmin, async (req,res) => {
+  if (!mongoDb) return res.json({ok:true, empleados:[]});
+  const docs = await mongoDb.collection('dias_libres').find({}).toArray();
+  res.json({ok:true, empleados: docs});
+});
+
 // ── DASHBOARD EN VIVO ────────────────────────────────────────────────────────
 app.get('/dashboard', (req,res) => res.sendFile(__dirname + '/dashboard.html'));
 
@@ -1429,6 +1526,58 @@ app.get('/admin/en-vivo', requireAdmin, async (req,res) => {
     console.error('[EN-VIVO]', e.message);
     res.status(500).json({error:e.message});
   }
+});
+
+// ── DÍAS LIBRES ───────────────────────────────────────────────────────────────
+// Estructura en MongoDB: { odoo_id, nombre, dias_semana: [0,1...6], fechas: ['YYYY-MM-DD',...] }
+
+async function getDiasLibres(odoo_id) {
+  if (!mongoDb) return { dias_semana:[], fechas:[] };
+  const doc = await mongoDb.collection('dias_libres').findOne({ odoo_id: parseInt(odoo_id) });
+  return doc || { dias_semana:[], fechas:[] };
+}
+
+async function getAllDiasLibres() {
+  if (!mongoDb) return [];
+  return mongoDb.collection('dias_libres').find({}).toArray();
+}
+
+function esDiaLibre(odoo_id, fechaStr, diasLibresMap) {
+  const config = diasLibresMap[parseInt(odoo_id)];
+  if (!config) return false;
+  // Verificar fechas específicas
+  if (config.fechas && config.fechas.includes(fechaStr)) return true;
+  // Verificar días de semana (0=Dom...6=Sab)
+  if (config.dias_semana && config.dias_semana.length > 0) {
+    const diaSemana = new Date(fechaStr + 'T12:00:00').getDay();
+    if (config.dias_semana.includes(diaSemana)) return true;
+  }
+  return false;
+}
+
+// Agregar fecha específica
+app.post('/admin/dias-libres/:odoo_id/fecha', requireAdmin, async (req,res) => {
+  const odoo_id = parseInt(req.params.odoo_id);
+  const { fecha } = req.body;
+  if (!fecha) return res.status(400).json({error:'Falta fecha'});
+  if (!mongoDb) return res.status(500).json({error:'MongoDB no disponible'});
+  await mongoDb.collection('dias_libres').updateOne(
+    { odoo_id },
+    { $addToSet: { fechas: fecha }, $set: { odoo_id, updated_at: new Date().toISOString() } },
+    { upsert: true }
+  );
+  res.json({ok:true});
+});
+
+// Eliminar fecha específica
+app.delete('/admin/dias-libres/:odoo_id/fecha/:fecha', requireAdmin, async (req,res) => {
+  const odoo_id = parseInt(req.params.odoo_id);
+  const { fecha } = req.params;
+  if (!mongoDb) return res.status(500).json({error:'MongoDB no disponible'});
+  await mongoDb.collection('dias_libres').updateOne(
+    { odoo_id }, { $pull: { fechas: fecha } }
+  );
+  res.json({ok:true});
 });
 
 // ── RUTAS ADMIN BÁSICAS ───────────────────────────────────────────────────────
